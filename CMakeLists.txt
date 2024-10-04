@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Set the project name and architecture
-project(AutoVid)
+project(Autofilm)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+
+add_subdirectory(Autofilm/external/glfw)
+find_package(OpenGL REQUIRED)
 
 # Define build configurations
 set(CMAKE_CONFIGURATION_TYPES "Debug;" CACHE STRING "" FORCE)
