@@ -2,8 +2,10 @@
 #include "Core.h"
 #include "Window.h"
 
-namespace Autofilm {
-    class AF_API App{
+namespace Autofilm
+{
+    class AF_API App
+    {
     public:
         App();
         virtual ~App();

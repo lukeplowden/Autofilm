@@ -1,5 +1,6 @@
 #include "Window.h"
 
-namespace Autofilm {
+namespace Autofilm 
+{
     
 }
