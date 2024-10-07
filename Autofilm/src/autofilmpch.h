@@ -6,5 +6,5 @@
 #include <memory>
 
 #ifdef AF_PLATFORM_WINDOWS
-    #include <windows.h>
+    #include <Windows.h>
 #endif
