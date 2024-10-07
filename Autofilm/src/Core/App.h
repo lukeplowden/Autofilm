@@ -1,6 +1,6 @@
 #pragma once
 #include "Core.h"
-#include "OpenGLWindow.h"
+#include "Window.h"
 
 namespace Autofilm
 {
@@ -12,8 +12,8 @@ namespace Autofilm
 
         void Run();
     private:
-        bool running = true;
-        float lastFrameTime = 0.0f;
+        std::unique_ptr<Window> m_window;
+        bool m_running = true;
     };
 
     App* CreateApp();
