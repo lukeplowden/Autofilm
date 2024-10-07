@@ -89,7 +89,7 @@ target_compile_definitions(emptyExample PRIVATE
 )
 
 target_compile_options(emptyExample PRIVATE
-    $<$<CONFIG:Debug>:/Zi>
+    $<$<CONFIG:Debug>:/DDEBUG /Zi>
     $<$<CONFIG:Release>:/O2>
     $<$<CONFIG:Dist>:/O2>
 )
