@@ -1,3 +1,6 @@
 [submodule "Autofilm/external/glfw"]
 	path = Autofilm/external/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "Autofilm/external/spdlog"]
+	path = Autofilm/external/spdlog
+	url = https://github.com/gabime/spdlog.git
