@@ -1,5 +1,6 @@
 #include "autofilmpch.h"
 #include "App.h"
+#include "Log.h"
 
 namespace Autofilm
 {
@@ -15,9 +16,10 @@ namespace Autofilm
 
     void App::Run()
     {
-        while (running);
+        m_window = std::unique_ptr<Window>(Window::Create());
+        while (m_running)
         {
-            
+            m_window->onUpdate();
         }
     }
 }
