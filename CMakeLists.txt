@@ -10,6 +10,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_subdirectory(Autofilm/external/glfw)
 find_package(OpenGL REQUIRED)
 
+# Add GLAD submodule
+add_library(glad STATIC
+    Autofilm/external/glad/src/glad.c
+)
+target_include_directories(glad PUBLIC
+    Autofilm/external/glad/include
+)
+
 # Define build configurations
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Dist" CACHE STRING "" FORCE)
 

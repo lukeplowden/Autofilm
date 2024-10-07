@@ -1,6 +1,3 @@
 [submodule "Autofilm/external/glfw"]
 	path = Autofilm/external/glfw
 	url = https://github.com/glfw/glfw.git
-[submodule "Autofilm/external/glad"]
-	path = Autofilm/external/glad
-	url = https://github.com/Dav1dde/glad.git
