@@ -1,4 +1,4 @@
-#include "afpch.h"
+#include "autofilmpch.h"
 #include "App.h"
 
 namespace Autofilm
@@ -17,6 +17,7 @@ namespace Autofilm
     {
         while (running);
         {
+            
         }
     }
 }

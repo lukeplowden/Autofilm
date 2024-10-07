@@ -1,4 +1,5 @@
-#include "OpenGLWindow.h"
+#include "autofilmpch.h"
+#include "Core/OpenGLWindow.h"
 
 namespace Autofilm
 {

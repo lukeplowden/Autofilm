@@ -1,7 +1,9 @@
 #pragma once
 
-#include "App.h"
-#include "OpenGLWindow.h"
-#include "Renderer.h"
+#include "Core/App.h"
+#include "Core/Log.h"
+#include "Core/OpenGLWindow.h"
+#include "Renderer/Renderer.h"
 
-#include "EntryPoint.h"
+// ENTRY POINT //
+#include "Core/EntryPoint.h"

@@ -4,7 +4,7 @@
 
 namespace Autofilm
 {
-    class AF_API App
+    class AUTOFILM_API App
     {
     public:
         App();

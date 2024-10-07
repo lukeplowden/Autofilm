@@ -1,5 +1,5 @@
 #pragma once
-#include "OpenGLWindow.h"
+#include "Core/OpenGLWindow.h"
 
 namespace Autofilm
 {
