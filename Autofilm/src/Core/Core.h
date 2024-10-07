@@ -9,3 +9,11 @@
 #else
 	#error No linux yet :~(
 #endif
+
+#ifdef AF_ENABLE_ASSERTS
+	#define AF_ASSERT(x, ...) { if(!(x)) { AF_ERROR("Assertion failed {0}", __VA_ARGS__); __debugbreak(); } }
+	#define AF_CORE_ASSERT(x, ...) { if(!(x)) { AF_ERROR("Assertion failed {0}", __VA_ARGS__); __debugbreak(); } }
+#else
+	#define AF_ASSERT(x, ...)
+	#define AF_CORE_ASSERT(x, ...)
+#endif
