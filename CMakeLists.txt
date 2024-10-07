@@ -28,7 +28,7 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Dist" CACHE STRING "" FORCE)
 set(outputdir "${CMAKE_BUILD_TYPE}")
 
 # Define source files for the Autofilm library
-file(GLOB AUTOFILM_SOURCES
+file(GLOB_RECURSE AUTOFILM_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/Autofilm/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Autofilm/src/*.h"
 )
@@ -42,7 +42,11 @@ target_include_directories(Autofilm PUBLIC
     ${CMAKE_SOURCE_DIR}/Autofilm/external/spdlog/include
 )
 
-target_link_libraries(Autofilm PRIVATE glfw OpenGL::GL)
+target_link_libraries(Autofilm PUBLIC 
+    glfw
+    OpenGL::GL
+    spdlog::spdlog
+)
 
 set_target_properties(Autofilm PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${outputdir}
@@ -62,7 +66,7 @@ target_compile_options(Autofilm PRIVATE
 )
 
 # Add precompiled header
-target_precompile_headers(Autofilm PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/afpch.h)
+target_precompile_headers(Autofilm PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/autofilmpch.h)
 
 add_custom_command(TARGET Autofilm POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -71,7 +75,7 @@ add_custom_command(TARGET Autofilm POST_BUILD
 )
 
 # emptyExample project
-file(GLOB EMPTYEXAMPLE_SOURCES
+file(GLOB_RECURSE EMPTYEXAMPLE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/apps/emptyExample/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/apps/emptyExample/src/*.h"
 )
@@ -101,4 +105,4 @@ target_compile_options(emptyExample PRIVATE
 target_link_libraries(emptyExample PRIVATE Autofilm)
 
 # Add precompiled header for emptyExample
-target_precompile_headers(emptyExample PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/afpch.h)
+# target_precompile_headers(emptyExample PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/autofilmpch.h)
