@@ -39,11 +39,13 @@ add_library(Autofilm SHARED ${AUTOFILM_SOURCES})
 target_include_directories(Autofilm PUBLIC
     ${CMAKE_SOURCE_DIR}/Autofilm/src
     ${CMAKE_SOURCE_DIR}/Autofilm/external/glfw/include
+    ${CMAKE_SOURCE_DIR}/Autofilm/external/glad/include
     ${CMAKE_SOURCE_DIR}/Autofilm/external/spdlog/include
 )
 
 target_link_libraries(Autofilm PUBLIC 
     glfw
+    glad
     OpenGL::GL
     spdlog::spdlog
 )
@@ -57,7 +59,9 @@ set_target_properties(Autofilm PROPERTIES
 target_compile_definitions(Autofilm PRIVATE
     AF_PLATFORM_WINDOWS
     AF_BUILD_DLL
+    $<$<CONFIG:Debug>:AF_ENABLE_ASSERTS>
 )
+
 
 target_compile_options(Autofilm PRIVATE
     $<$<CONFIG:Debug>:/DDEBUG /Zi>
