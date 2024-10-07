@@ -10,6 +10,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_subdirectory(Autofilm/external/glfw)
 find_package(OpenGL REQUIRED)
 
+# Add spdlog submodule
+add_subdirectory(Autofilm/external/spdlog)
+
 # Add GLAD submodule
 add_library(glad STATIC
     Autofilm/external/glad/src/glad.c
@@ -36,6 +39,7 @@ add_library(Autofilm SHARED ${AUTOFILM_SOURCES})
 target_include_directories(Autofilm PUBLIC
     ${CMAKE_SOURCE_DIR}/Autofilm/src
     ${CMAKE_SOURCE_DIR}/Autofilm/external/glfw/include
+    ${CMAKE_SOURCE_DIR}/Autofilm/external/spdlog/include
 )
 
 target_link_libraries(Autofilm PRIVATE glfw OpenGL::GL)
