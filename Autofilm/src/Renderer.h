@@ -1,11 +1,11 @@
 #pragma once
-#include "Window.h"
+#include "OpenGLWindow.h"
 
 namespace Autofilm
 {
     class Renderer
     {
-        Renderer(const Window* window) {}
+        Renderer(const OpenGLWindow* window) {}
         ~Renderer() {}
     };
 }

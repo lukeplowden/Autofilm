@@ -1,5 +1,5 @@
+#include "afpch.h"
 #include "App.h"
-#include <iostream>
 
 namespace Autofilm
 {
@@ -16,5 +16,7 @@ namespace Autofilm
     void App::Run()
     {
         while (running);
+        {
+        }
     }
 }

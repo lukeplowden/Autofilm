@@ -6,15 +6,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
+# Add GLFW submodule
 add_subdirectory(Autofilm/external/glfw)
 find_package(OpenGL REQUIRED)
 
 # Define build configurations
-set(CMAKE_CONFIGURATION_TYPES "Debug;" CACHE STRING "" FORCE)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Dist" CACHE STRING "" FORCE)
 
 # Output directory
-set(outputdir "")
+set(outputdir "${CMAKE_BUILD_TYPE}")
 
 # Define source files for the Autofilm library
 file(GLOB AUTOFILM_SOURCES
@@ -27,8 +27,10 @@ add_library(Autofilm SHARED ${AUTOFILM_SOURCES})
 
 target_include_directories(Autofilm PUBLIC
     ${CMAKE_SOURCE_DIR}/Autofilm/src
-    ${CMAKE_SOURCE_DIR}/Autofilm/src
+    ${CMAKE_SOURCE_DIR}/Autofilm/external/glfw/include
 )
+
+target_link_libraries(Autofilm PRIVATE glfw OpenGL::GL)
 
 set_target_properties(Autofilm PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${outputdir}
@@ -42,16 +44,13 @@ target_compile_definitions(Autofilm PRIVATE
 )
 
 target_compile_options(Autofilm PRIVATE
-    $<$<CONFIG:Debug>:-DAF_DEBUG>
-    $<$<CONFIG:Release>:-DAF_RELEASE>
-    $<$<CONFIG:Dist>:-DAF_DIST>
-)
-
-target_compile_options(Autofilm PRIVATE
     $<$<CONFIG:Debug>:/DDEBUG /Zi>
     $<$<CONFIG:Release>:/O2>
     $<$<CONFIG:Dist>:/O2>
 )
+
+# Add precompiled header
+target_precompile_headers(Autofilm PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/afpch.h)
 
 add_custom_command(TARGET Autofilm POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -68,8 +67,7 @@ file(GLOB EMPTYEXAMPLE_SOURCES
 add_executable(emptyExample ${EMPTYEXAMPLE_SOURCES})
 
 target_include_directories(emptyExample PRIVATE
-${CMAKE_SOURCE_DIR}/Autofilm/src/
-${CMAKE_SOURCE_DIR}/Autofilm/src/
+    ${CMAKE_SOURCE_DIR}/Autofilm/src
 )
 
 set_target_properties(emptyExample PROPERTIES
@@ -83,15 +81,12 @@ target_compile_definitions(emptyExample PRIVATE
 )
 
 target_compile_options(emptyExample PRIVATE
-    $<$<CONFIG:Debug>:-DAF_DEBUG>
-    $<$<CONFIG:Release>:-DAF_RELEASE>
-    $<$<CONFIG:Dist>:-DAF_DIST>
-)
-
-target_compile_options(emptyExample PRIVATE
-    $<$<CONFIG:Debug>:-g>
-    $<$<CONFIG:Release>:-O2>
-    $<$<CONFIG:Dist>:-O2>
+    $<$<CONFIG:Debug>:/Zi>
+    $<$<CONFIG:Release>:/O2>
+    $<$<CONFIG:Dist>:/O2>
 )
 
 target_link_libraries(emptyExample PRIVATE Autofilm)
+
+# Add precompiled header for emptyExample
+target_precompile_headers(emptyExample PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/afpch.h)
