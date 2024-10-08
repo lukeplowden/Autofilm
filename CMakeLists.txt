@@ -6,12 +6,28 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Set default build type if not specified
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Set the runtime library to use the shared version of the CRT
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MDd")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MDd")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MDd")
+
 # Add GLFW submodule
 add_subdirectory(Autofilm/external/glfw)
 find_package(OpenGL REQUIRED)
 
 # Add spdlog submodule
 add_subdirectory(Autofilm/external/spdlog)
+
+# Add glm headers
+include_directories(Autofilm/external/glm)
 
 # Add GLAD submodule
 add_library(glad STATIC
@@ -41,6 +57,7 @@ target_include_directories(Autofilm PUBLIC
     ${CMAKE_SOURCE_DIR}/Autofilm/external/glfw/include
     ${CMAKE_SOURCE_DIR}/Autofilm/external/glad/include
     ${CMAKE_SOURCE_DIR}/Autofilm/external/spdlog/include
+    ${CMAKE_SOURCE_DIR}/Autofilm/external/glm
 )
 
 target_link_libraries(Autofilm PUBLIC 
@@ -109,4 +126,4 @@ target_compile_options(emptyExample PRIVATE
 target_link_libraries(emptyExample PRIVATE Autofilm)
 
 # Add precompiled header for emptyExample
-# target_precompile_headers(emptyExample PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/autofilmpch.h)
+target_precompile_headers(emptyExample PRIVATE ${CMAKE_SOURCE_DIR}/Autofilm/src/autofilmpch.h)
