@@ -22,7 +22,6 @@ namespace Autofilm
         inline unsigned int getHeight() const override { return m_data.height; };
 
         // Window Attributes
-        // inline void setEventCallback(const EventCallbackFn& callback) override { data.eventCallback = callback; };
         void setFullscreen(bool fullscreen) override;
         bool isFullscreen() const override;
         void setVSync(bool enabled) override;
@@ -43,7 +42,6 @@ namespace Autofilm
             unsigned int width, height;
             bool VSync;
             bool fullscreen;
-            // EventCallbackFn eventCallback;
         };
 
         WindowData m_data;
