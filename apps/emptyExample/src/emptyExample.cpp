@@ -3,11 +3,17 @@
 class emptyExample : public Autofilm::App
 {
     public:
-        emptyExample() {}
+        emptyExample(const Autofilm::AppProperties& props)
+            : Autofilm::App(props) 
+            {
+
+            }
         ~emptyExample() {}
 };
 
 Autofilm::App* Autofilm::CreateApp()
 {
-    return new emptyExample();
-}
+    AppProperties props;
+    props.multiWindow = false;
+    return new emptyExample(props);
+}  
