@@ -4,9 +4,9 @@
 
 namespace Autofilm
 {
-    App::App()
+    App::App(const AppProperties& props)
     {
-
+        m_props = props;
     }
 
     App::~App()
@@ -16,10 +16,14 @@ namespace Autofilm
 
     void App::Run()
     {
-        m_window = std::unique_ptr<Window>(Window::Create());
+        m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
+        m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
         while (m_running)
         {
-            m_window->onUpdate();
+            for (auto& window : m_windows)
+            {
+                window->onUpdate();
+            }
         }
     }
 }
