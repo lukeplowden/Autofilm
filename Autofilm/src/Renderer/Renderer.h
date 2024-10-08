@@ -1,11 +1,15 @@
 #pragma once
-#include "Core/OpenGLWindow.h"
+#include "Core/Core.h"
+#include "Renderer/RenderAPI.h"
 
 namespace Autofilm
 {
-    class Renderer
+    class AUTOFILM_API Renderer
     {
-        Renderer(const OpenGLWindow* window) {}
-        ~Renderer() {}
+    public:
+        static void init(RenderAPIType renderer);
+        static void shutdown();
+    private:
+        static std::unique_ptr<RenderAPI> s_api;
     };
 }
