@@ -8,11 +8,8 @@ namespace Autofilm
 {
     void OpenGLAPI::init()
     {
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-        {
-            // Handle error
-            AF_CORE_ERROR("Failed to initialize OpenGL context");
-        }
+        int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+        AF_CORE_ASSERT(status, "Failed to initialize Glad");
     }
 
     void OpenGLAPI::shutdown()
