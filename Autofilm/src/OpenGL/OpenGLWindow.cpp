@@ -1,5 +1,5 @@
 #include "autofilmpch.h"
-#include "Core/OpenGLWindow.h"
+#include "OpenGL/OpenGLWindow.h"
 #include "Core/Log.h"
 
 namespace Autofilm
@@ -78,5 +78,10 @@ namespace Autofilm
     bool OpenGLWindow::isFullscreen() const
     {
         return m_data.fullscreen;
+    }
+
+    GLFWwindow* OpenGLWindow::getWindow() const
+    {
+        return m_window;
     }
 }

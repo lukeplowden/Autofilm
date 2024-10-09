@@ -26,6 +26,7 @@ namespace Autofilm
         bool isFullscreen() const override;
         void setVSync(bool enabled) override;
         bool isVSync() const override;
+        GLFWwindow* getWindow() const;
 
     private:
         virtual void init(const WindowProperties& props);
