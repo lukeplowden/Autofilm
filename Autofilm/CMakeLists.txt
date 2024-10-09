@@ -6,11 +6,12 @@ project(
     DESCRIPTION "A C++ creative coding library"
     LANGUAGES CXX
 )
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(outputdir "${CMAKE_SRC_DIR}/bin/${CMAKE_BUILD_TYPE}")
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+set(outputdir "${CMAKE_SOURCE_DIR}/bin")
 
 add_subdirectory(external/glfw)
 find_package(OpenGL REQUIRED)
@@ -32,11 +33,11 @@ add_library(Autofilm SHARED ${AUTOFILM_SOURCES})
 set_property(TARGET Autofilm PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
 target_include_directories(Autofilm PUBLIC
-    ${CMAKE_SOURCE_DIR}/external/glad/include
-    ${CMAKE_SOURCE_DIR}/external/glfw/include
-    ${CMAKE_SOURCE_DIR}/external/spdlog/include
-    ${CMAKE_SOURCE_DIR}/external/glm
-    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/glad/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/glfw/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/spdlog/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/glm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(Autofilm PUBLIC 
@@ -47,9 +48,7 @@ target_link_libraries(Autofilm PUBLIC
 )
 
 set_target_properties(Autofilm PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${outputdir}
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${outputdir}
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/${outputdir}
+    LIBRARY_OUTPUT_DIRECTORY ${outputdir}
 )
 
 target_compile_definitions(Autofilm PRIVATE
@@ -58,9 +57,10 @@ target_compile_definitions(Autofilm PRIVATE
     $<$<CONFIG:Debug>:AF_ENABLE_ASSERTS>
 )
 
+target_precompile_headers(Autofilm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/autofilmpch.h)
+
 target_compile_options(Autofilm PRIVATE
     $<$<CONFIG:Debug>:/DDEBUG /Zi>
     $<$<CONFIG:Release>:/O2>
 )
 
-target_precompile_headers(Autofilm PRIVATE ${CMAKE_SOURCE_DIR}/src/autofilmpch.h)
