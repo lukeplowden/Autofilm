@@ -74,7 +74,9 @@ target_link_libraries(Autofilm PUBLIC
 # )
 
 set_target_properties(Autofilm PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${outputdir}"
+    RUNTIME_OUTPUT_DIRECTORY "${outputdir}"   # For DLL files
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${outputdir}"LIBRARY_OUTPUT_DIRECTORY "${outputdir}"
     ARCHIVE_OUTPUT_DIRECTORY "${outputdir}"  # For static libs and import libs
     LIBRARY_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
     LIBRARY_OUTPUT_DIRECTORY_RELEASE "${outputdir}"
