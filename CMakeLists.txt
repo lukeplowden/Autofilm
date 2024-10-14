@@ -27,6 +27,24 @@ target_include_directories(glad PUBLIC
     ${AUTOFILM_EXT}/glad/include
 )
 
+# GStreamer
+if(DEFINED ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
+    set(GSTREAMER_ROOT $ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
+    set(ENV{GST_PLUGIN_PATH} "${GSTREAMER_ROOT}/lib/gstreamer-1.0")
+else()
+    message(FATAL_ERROR "GStreamer is not installed, or Autofilm does not currently support this platform.")
+endif()
+include_directories(
+    ${GSTREAMER_ROOT}include/gstreamer-1.0
+    ${GSTREAMER_ROOT}include/glib-2.0
+    ${GSTREAMER_ROOT}lib/glib-2.0/include
+    ${GSTREAMER_ROOT}lib/gstreamer-1.0/include
+    ${GSTREAMER_ROOT}
+)
+link_directories(
+    ${GSTREAMER_ROOT}/lib
+)
+
 # Source files
 add_library(Autofilm SHARED 
     ${AUTOFILM_SRC}/Autofilm.h
@@ -47,6 +65,7 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/Renderer/RenderAPI.h
     ${AUTOFILM_SRC}/Renderer/Renderer.cpp
     ${AUTOFILM_SRC}/Renderer/Renderer.h
+    ${AUTOFILM_SRC}/Video/VideoPlayer.h
 )
 
 get_target_property(Autofilm_SOURCES Autofilm SOURCES)
@@ -67,21 +86,26 @@ target_link_libraries(Autofilm PUBLIC
     glad
     glfw
     spdlog::spdlog
-)
-
-# set_target_properties(Autofilm PROPERTIES
-#     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
-# )
+    gstreamer-1.0
+    gstbase-1.0
+    gstaudio-1.0
+    glib-2.0
+    gobject-2.0
+    # opencore-amrnb-0
+    # opencore-amrwb
+)    
 
 set_target_properties(Autofilm PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${outputdir}"   # For DLL files
+    RUNTIME_OUTPUT_DIRECTORY "${outputdir}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${outputdir}"LIBRARY_OUTPUT_DIRECTORY "${outputdir}"
-    ARCHIVE_OUTPUT_DIRECTORY "${outputdir}"  # For static libs and import libs
-    LIBRARY_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${outputdir}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${outputdir}"
+    LIBRARY_OUTPUT_DIRECTORY "${outputdir}"
+    ARCHIVE_OUTPUT_DIRECTORY "${outputdir}"
     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
     ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${outputdir}"
+    LIBRARY_OUTPUT_DIRECTORY "${outputdir}"
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE "${outputdir}"
 )
 
 target_compile_definitions(Autofilm PRIVATE
@@ -97,7 +121,6 @@ target_compile_options(Autofilm PRIVATE
     $<$<CONFIG:Release>:/O2>
 )
 
-
 # EXAMPLE PROJECT
 file(GLOB_RECURSE EMPTYEXAMPLE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/apps/emptyExample/src/*.cpp"
@@ -106,14 +129,10 @@ file(GLOB_RECURSE EMPTYEXAMPLE_SOURCES
 
 add_executable(emptyExample ${EMPTYEXAMPLE_SOURCES})
 
-# set_target_properties(emptyExample PROPERTIES
-#     RUNTIME_OUTPUT_DIRECTORY "${outputdir}"
-# )
-
 set_target_properties(emptyExample PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${outputdir}"
-    ARCHIVE_OUTPUT_DIRECTORY "${outputdir}"  # For static libs and import libs
-    RUNTIME_OUTPUT_DIRECTORY "${outputdir}"   # For DLL files
+    ARCHIVE_OUTPUT_DIRECTORY "${outputdir}"
+    RUNTIME_OUTPUT_DIRECTORY "${outputdir}"
     LIBRARY_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
     LIBRARY_OUTPUT_DIRECTORY_RELEASE "${outputdir}"
     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
