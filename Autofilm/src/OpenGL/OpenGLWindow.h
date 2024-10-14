@@ -1,10 +1,10 @@
 #pragma once
-#include "autofilmpch.h"
 
 #include "Core/Core.h"
 #include "Core/Window.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <string>
 
 namespace Autofilm
 {
@@ -32,8 +32,6 @@ namespace Autofilm
         virtual void init(const WindowProperties& props);
         virtual void shutdown();
 
-
-    private:
         GLFWwindow* m_window {nullptr};
         GLFWmonitor* m_monitor {nullptr};
 
