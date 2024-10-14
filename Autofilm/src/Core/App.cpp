@@ -2,6 +2,7 @@
 #include "App.h"
 #include "Log.h"
 #include <glad/glad.h>
+#include "Video/VideoPlayer.h"
 #include <GLFW/glfw3.h>
 #include "OpenGL/OpenGLWindow.h"
 
@@ -20,8 +21,9 @@ namespace Autofilm
     void App::Run()
     {
         m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
-        m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
-        m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
+        // m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
+        // m_windows.push_back(std::unique_ptr<Window>(Window::Create()));
+        hello_gst();
         while (m_running)
         {
             float i = 0.0f;
