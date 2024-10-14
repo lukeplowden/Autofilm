@@ -26,6 +26,7 @@ namespace Autofilm
     public:
         void Run();
         virtual ~App();
+        void pushLayer();
     
     protected:
         App(const AppProperties& props = AppProperties());
