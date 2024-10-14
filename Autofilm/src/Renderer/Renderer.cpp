@@ -2,6 +2,7 @@
 #include "Renderer/Renderer.h"
 #include "Core/Log.h"
 #include "OpenGL/OpenGLAPI.h"
+#include "Vulkan/VulkanAPI.h"
 
 namespace Autofilm 
 {
@@ -14,18 +15,16 @@ namespace Autofilm
             case RenderAPIType::OpenGL:
                 s_api = std::make_unique<OpenGLAPI>();
                 break;
+            case RenderAPIType::Vulkan:
+                s_api = std::make_unique<VulkanAPI>();
+                break;
         }
         AF_CORE_ASSERT(s_api, "Invalid renderer choice.");
         s_api->init();
-        s_api->clearColor(glm::vec4(0.0, 1.0, 0.0, 1.0));
     }
 
     void Renderer::shutdown()
     {
-        if (s_api)
-        {
-            s_api->shutdown();
-            s_api.reset();
-        }
+        s_api->shutdown();
     }
 }

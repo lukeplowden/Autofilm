@@ -61,7 +61,11 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/OpenGL/OpenGLAPI.cpp
     ${AUTOFILM_SRC}/OpenGL/OpenGLAPI.h
     ${AUTOFILM_SRC}/OpenGL/OpenGLWindow.cpp
-    ${AUTOFILM_SRC}/OpenGL/OpenGLWindow.h
+    ${AUTOFILM_SRC}/OpenGL/OpenGLWindow.h    
+    ${AUTOFILM_SRC}/Vulkan/VulkanAPI.cpp
+    ${AUTOFILM_SRC}/Vulkan/VulkanAPI.h
+    ${AUTOFILM_SRC}/Vulkan/VulkanWindow.cpp
+    ${AUTOFILM_SRC}/Vulkan/VulkanWindow.h
     ${AUTOFILM_SRC}/Renderer/RenderAPI.h
     ${AUTOFILM_SRC}/Renderer/Renderer.cpp
     ${AUTOFILM_SRC}/Renderer/Renderer.h

@@ -7,6 +7,7 @@ namespace Autofilm
     enum class AUTOFILM_API RenderAPIType
     {
         OpenGL,
+        Vulkan
         // that's all for now
     };
 
