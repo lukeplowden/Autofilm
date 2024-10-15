@@ -58,21 +58,6 @@ namespace Autofilm
         
         VkResult result = vkCreateInstance(&createInfo, nullptr, &_instance);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create Vulkan instance. {0}");
-
-        // uint32_t extensionCount = 0;
-        // vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-        // AF_VK_INFO("{0} Vulkan extensions available", extensionCount);
-
-        // std::vector<VkExtensionProperties> extensions(extensionCount);
-        // vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-        // for (const auto& extension : extensions) 
-        // {
-        //     AF_VK_INFO(extension.extensionName);
-        // }
-
-        // if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-        //    throw std::runtime_error("failed to set up debug messenger!");
-        // }
     }
 
     bool VulkanAPI::checkValidationLayerSupport()
