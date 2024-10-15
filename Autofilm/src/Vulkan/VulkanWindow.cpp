@@ -6,10 +6,10 @@ namespace Autofilm
 {
     static bool s_GLFWInitialised = false;
 
-    Window* Window::Create(const WindowProperties& props)
-    {
-        return new VulkanWindow(props);
-    }
+    // Window* Window::Create(const WindowProperties& props)
+    // {
+    //     return new VulkanWindow(props);
+    // }
  
     VulkanWindow::VulkanWindow(const WindowProperties& props)
     {
