@@ -28,13 +28,17 @@ namespace Autofilm
         void createInstance();
         void pickPhysicalDevice();
         bool isDeviceSuitable(VkPhysicalDevice device);
+        void createLogicalDevice();
 
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
             std::optional<uint32_t> computeFamily;
+            std::optional<uint32_t> presentFamily;
+            std::optional<uint32_t> graphicsAndComputeFamily;
 
             bool isComplete() {
-               return (graphicsFamily.has_value());
+               return (graphicsAndComputeFamily.has_value() 
+                        && presentFamily.has_value());
             }
         };
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
