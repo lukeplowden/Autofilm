@@ -8,10 +8,12 @@ namespace Autofilm
     {
         createInstance();
         pickPhysicalDevice();
+        createLogicalDevice();
     }
 
     void VulkanAPI::shutdown()
     {
+        vkDestroyDevice(_device, nullptr);
         vkDestroyInstance(_instance, nullptr);
     }
 
@@ -58,7 +60,7 @@ namespace Autofilm
         }
         
         VkResult result = vkCreateInstance(&createInfo, nullptr, &_instance);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create Vulkan instance. {0}");
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create Vulkan instance.");
     }
 
     void VulkanAPI::pickPhysicalDevice()
@@ -82,6 +84,42 @@ namespace Autofilm
 
     }
 
+    void VulkanAPI::createLogicalDevice()
+    {
+        QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+        
+        VkDeviceQueueCreateInfo queueCreateInfo{};
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = indices.graphicsAndComputeFamily.value();
+        queueCreateInfo.queueCount = 1;
+        float queuePriority = 1.0f;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+
+        VkPhysicalDeviceFeatures deviceFeatures{};
+        deviceFeatures.multiViewport = VK_TRUE;
+
+        VkDeviceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pQueueCreateInfos = &queueCreateInfo;
+        createInfo.queueCreateInfoCount = 1;
+        createInfo.pEnabledFeatures = &deviceFeatures;
+        
+        // For backwards compatability:
+        createInfo.enabledExtensionCount = 0;
+        if (_enableValidationLayers) {
+            createInfo.enabledLayerCount = static_cast<uint32_t>(_validationLayers.size());
+            createInfo.ppEnabledLayerNames = _validationLayers.data();
+        } else {
+            createInfo.enabledLayerCount = 0;
+        }
+
+        VkResult result = vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a logical device.")
+
+        VkQueue graphicsQueue;
+        vkGetDeviceQueue(_device, indices.graphicsAndComputeFamily.value(), 0, &graphicsQueue);
+    }
+
     bool VulkanAPI::isDeviceSuitable(VkPhysicalDevice device)
     {
         QueueFamilyIndices indices = findQueueFamilies(device);
@@ -100,11 +138,9 @@ namespace Autofilm
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
         int i = 0;
         for (const auto& queueFamily : queueFamilies) {
-            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-                indices.graphicsFamily = i;
-            }
-            if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-                indices.computeFamily = i;
+
+            if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+                indices.graphicsAndComputeFamily = i;
             }
             i++;
         }
@@ -171,9 +207,8 @@ namespace Autofilm
         if (!_enableValidationLayers) { return; }
         VkDebugUtilsMessengerCreateInfoEXT createInfo;
         populateDebugMessengerCreateInfo(createInfo);
-        AF_VK_ASSERT_EQUAL(CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger), VK_SUCCESS,
-            "Failed to create the debug messenger."
-        );
+        VkResult result = CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create the debug messenger.");
     }
      
     VKAPI_ATTR VkBool32 VKAPI_CALL VulkanAPI::debugCallback(
