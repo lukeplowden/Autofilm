@@ -8,9 +8,9 @@
 
 namespace Autofilm
 {
-    App::App(const AppProperties& props)
+    App::App(const ProjectSettings& settings)
     {
-        m_props = props;
+        _settings = settings;
     }
 
     App::~App()

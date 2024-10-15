@@ -8,13 +8,13 @@
 
 namespace Autofilm
 {
-    struct AUTOFILM_API AppProperties
+    struct AUTOFILM_API ProjectSettings
     {
         std::string title;
         RenderAPIType renderer;
         bool multiWindow;
 
-        AppProperties(const std::string& title = "Autofilm", 
+        ProjectSettings(const std::string& title = "Autofilm", 
                     bool multiWindow = true,
                     RenderAPIType renderer = RenderAPIType::OpenGL)
             : title(title), multiWindow(multiWindow), renderer(renderer)
@@ -24,20 +24,20 @@ namespace Autofilm
     class AUTOFILM_API App
     {
     public:
+        ProjectSettings _settings;
         void Run();
         virtual ~App();
-        void pushLayer();
+        virtual void setup() = 0;
     
     protected:
-        App(const AppProperties& props = AppProperties());
+        App(const ProjectSettings& props = ProjectSettings());
 
     private:
         App(const App&) = delete;
         App& operator=(const App&) = delete;
-
-        std::vector<std::unique_ptr<Window>> m_windows;
         bool m_running = true;
-        AppProperties m_props;
+        std::vector<std::unique_ptr<Window>> _windows;
+
     };
 
     App* CreateApp();
