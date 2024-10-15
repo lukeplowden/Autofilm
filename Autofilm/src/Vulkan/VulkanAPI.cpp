@@ -1,13 +1,13 @@
 #include "autofilmpch.h"
 #include "Core/Log.h"
 #include "Vulkan/VulkanAPI.h"
-#include <vector>
 
 namespace Autofilm
 {
     void VulkanAPI::init()
     {
         createInstance();
+        pickPhysicalDevice();
     }
 
     void VulkanAPI::shutdown()
@@ -21,6 +21,7 @@ namespace Autofilm
 
     void VulkanAPI::clear()
     {
+
     }
 
     void VulkanAPI::createInstance()
@@ -58,6 +59,56 @@ namespace Autofilm
         
         VkResult result = vkCreateInstance(&createInfo, nullptr, &_instance);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create Vulkan instance. {0}");
+    }
+
+    void VulkanAPI::pickPhysicalDevice()
+    {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+        AF_VK_ASSERT(deviceCount, "There are no GPUs which support Vulkan available.");
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+        for (const auto& device : devices) {
+            if (isDeviceSuitable(device)) {
+                _physicalDevice = device;
+                break;
+            }
+        }
+
+        AF_VK_ASSERT_NOT_EQUAL(_physicalDevice, VK_NULL_HANDLE, "Failed to find a suitable GPU");
+
+    }
+
+    bool VulkanAPI::isDeviceSuitable(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices = findQueueFamilies(device);
+        bool result = indices.isComplete();
+        return result;
+    }
+
+    VulkanAPI::QueueFamilyIndices VulkanAPI::findQueueFamilies(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices;
+        
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+        
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+        int i = 0;
+        for (const auto& queueFamily : queueFamilies) {
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphicsFamily = i;
+            }
+            if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+                indices.computeFamily = i;
+            }
+            i++;
+        }
+        return indices;
     }
 
     bool VulkanAPI::checkValidationLayerSupport()

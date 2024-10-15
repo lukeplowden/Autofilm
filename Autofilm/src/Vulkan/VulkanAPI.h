@@ -24,14 +24,24 @@ namespace Autofilm
         VkQueue _graphicsQueue;
         VkQueue _presentQueue;
 
+
         void createInstance();
         void pickPhysicalDevice();
         bool isDeviceSuitable(VkPhysicalDevice device);
 
+        struct QueueFamilyIndices {
+            std::optional<uint32_t> graphicsFamily;
+            std::optional<uint32_t> computeFamily;
+
+            bool isComplete() {
+               return (graphicsFamily.has_value());
+            }
+        };
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+
         // Validation Layers
         bool _enableValidationLayers = true;
         VkDebugUtilsMessengerEXT _debugMessenger;
-
         const std::vector<const char*> _validationLayers = {
             "VK_LAYER_KHRONOS_validation"
         };
