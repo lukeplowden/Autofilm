@@ -19,6 +19,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # External dependencies
 add_subdirectory(${AUTOFILM_EXT}/glfw)
 find_package(OpenGL REQUIRED)
+find_package(Vulkan REQUIRED)
 add_subdirectory(${AUTOFILM_EXT}/spdlog)
 add_library(glad STATIC
     ${AUTOFILM_EXT}/glad/src/glad.c
@@ -30,7 +31,6 @@ target_include_directories(glad PUBLIC
 # GStreamer
 if(DEFINED ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
     set(GSTREAMER_ROOT $ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
-    set(ENV{GST_PLUGIN_PATH} "${GSTREAMER_ROOT}/lib/gstreamer-1.0")
 else()
     message(FATAL_ERROR "GStreamer is not installed, or Autofilm does not currently support this platform.")
 endif()
@@ -44,6 +44,7 @@ include_directories(
 link_directories(
     ${GSTREAMER_ROOT}/lib
 )
+
 
 # Source files
 add_library(Autofilm SHARED 
@@ -64,6 +65,8 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/OpenGL/OpenGLWindow.h    
     ${AUTOFILM_SRC}/Vulkan/VulkanAPI.cpp
     ${AUTOFILM_SRC}/Vulkan/VulkanAPI.h
+    ${AUTOFILM_SRC}/Vulkan/VulkanUtils.cpp
+    ${AUTOFILM_SRC}/Vulkan/VulkanUtils.h
     ${AUTOFILM_SRC}/Vulkan/VulkanWindow.cpp
     ${AUTOFILM_SRC}/Vulkan/VulkanWindow.h
     ${AUTOFILM_SRC}/Renderer/RenderAPI.h
@@ -79,6 +82,7 @@ set_property(TARGET Autofilm PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CON
 
 target_include_directories(Autofilm PUBLIC
     ${AUTOFILM_EXT}/glad/include
+    $ENV{VULKAN_SDK}/include
     ${AUTOFILM_EXT}/glfw/include
     ${AUTOFILM_EXT}/spdlog/include
     ${AUTOFILM_EXT}/glm
@@ -87,6 +91,7 @@ target_include_directories(Autofilm PUBLIC
 
 target_link_libraries(Autofilm PUBLIC 
     OpenGL::GL
+    Vulkan::Vulkan
     glad
     glfw
     spdlog::spdlog
@@ -95,10 +100,7 @@ target_link_libraries(Autofilm PUBLIC
     gstaudio-1.0
     glib-2.0
     gobject-2.0
-    # opencore-amrnb-0
-    # opencore-amrwb
 )    
-
 set_target_properties(Autofilm PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${outputdir}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${outputdir}"
@@ -115,7 +117,7 @@ set_target_properties(Autofilm PROPERTIES
 target_compile_definitions(Autofilm PRIVATE
     AF_PLATFORM_WINDOWS
     AF_BUILD_DLL
-    $<$<CONFIG:Debug>:AF_ENABLE_ASSERTS>
+    $<$<CONFIG:Debug>:AF_DEBUG>
 )
 
 target_precompile_headers(Autofilm PRIVATE ${AUTOFILM_SRC}/autofilmpch.h)
@@ -147,6 +149,8 @@ set_target_properties(emptyExample PROPERTIES
 
 set_property(TARGET emptyExample PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
+# target_link_options(emptyExample PRIVATE /NODEFAULTLIB:LIBCMT)
+
 target_compile_definitions(emptyExample PRIVATE
     AF_PLATFORM_WINDOWS
 )
@@ -157,5 +161,6 @@ target_compile_options(emptyExample PRIVATE
 )
 
 target_link_libraries(emptyExample PUBLIC Autofilm)
+
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "emptyExample")
