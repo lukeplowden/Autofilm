@@ -6,11 +6,17 @@
 	#else
 		#define AUTOFILM_API __declspec(dllimport)
 	#endif
+#elif defined(AF_PLATFORM_LINUX)
+    #ifdef AF_BUILD_DLL
+        #define AUTOFILM_API __attribute__((visibility("default")))
+    #else
+        #define AUTOFILM_API
+    #endif
 #else
-	#error No linux yet :~(
+    #error Platform not supported
 #endif
 
-#ifdef AF_DEBUG
+#ifdef AF_ENABLE_ASSERTS
 	#define AF_ASSERT(x, ...) { if(!(x)) { AF_ERROR("Assertion failed {0}", __VA_ARGS__); __debugbreak(); } }
 	#define AF_CORE_ASSERT(x, ...) { if(!(x)) { AF_CORE_ERROR("Assertion failed {0}", __VA_ARGS__); __debugbreak(); } }
 	#define AF_CORE_ASSERT_EQUAL(x, y, ...) { if(x != y) { AF_CORE_ERROR("Assertion failed {0}", __VA_ARGS__); __debugbreak(); } }

@@ -117,7 +117,7 @@ set_target_properties(Autofilm PROPERTIES
 target_compile_definitions(Autofilm PRIVATE
     AF_PLATFORM_WINDOWS
     AF_BUILD_DLL
-    $<$<CONFIG:Debug>:AF_DEBUG>
+    $<$<CONFIG:Debug>:AF_ENABLE_ASSERTS>
 )
 
 target_precompile_headers(Autofilm PRIVATE ${AUTOFILM_SRC}/autofilmpch.h)
