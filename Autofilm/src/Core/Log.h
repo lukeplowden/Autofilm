@@ -27,16 +27,13 @@ namespace Autofilm
 #define AF_CORE_INFO(...)   ::Autofilm::Log::GetCoreLogger()->info(__VA_ARGS__)
 #define AF_CORE_WARN(...)   ::Autofilm::Log::GetCoreLogger()->warn(__VA_ARGS__)
 #define AF_CORE_ERROR(...)  ::Autofilm::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define AF_CORE_FATAL(...)  ::Autofilm::Log::GetCoreLogger()->fatal(__VA_ARGS__)
 
 #define AF_TRACE(...)       ::Autofilm::Log::GetClientLogger()->trace(__VA_ARGS__)
 #define AF_INFO(...)        ::Autofilm::Log::GetClientLogger()->info(__VA_ARGS__)
 #define AF_WARN(...)        ::Autofilm::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define AF_ERROR(...)       ::Autofilm::Log::GetClientLogger()->error(__VA_ARGS__)
-#define AF_FATAL(...)       ::Autofilm::Log::GetClientLogger()->fatal(__VA_ARGS__)
 
 #define AF_VK_TRACE(...)       ::Autofilm::Log::GetVulkanLogger()->trace(__VA_ARGS__)
 #define AF_VK_INFO(...)        ::Autofilm::Log::GetVulkanLogger()->info(__VA_ARGS__)
 #define AF_VK_WARN(...)        ::Autofilm::Log::GetVulkanLogger()->warn(__VA_ARGS__)
 #define AF_VK_ERROR(...)       ::Autofilm::Log::GetVulkanLogger()->error(__VA_ARGS__)
-#define AF_VK_FATAL(...)       ::Autofilm::Log::GetVulkanLogger()->fatal(__VA_ARGS__)
