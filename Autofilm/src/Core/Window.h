@@ -18,6 +18,19 @@ namespace Autofilm
         {}
     };
 
+    class AUTOFILM_API WindowManager
+    {
+    public:
+        WindowManager();
+        virtual ~WindowManager() {}
+        
+        virtual void createWindow(const WindowProperties&  props = WindowProperties());
+        virtual void destroyWindow();
+    private:
+        std::vector<std::unique_ptr<Window>> _windows;
+        // virtual void createWindow
+    };
+
     class AUTOFILM_API Window
     {
     public:
@@ -38,5 +51,9 @@ namespace Autofilm
         virtual bool isFullscreen() const = 0;
 
         static Window* Create(const WindowProperties&  props = WindowProperties());
+
+        private:
+            int _id;
+            friend class WindowManager;
     };
 }
