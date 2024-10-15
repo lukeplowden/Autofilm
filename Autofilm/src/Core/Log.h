@@ -14,10 +14,12 @@ namespace Autofilm
 
         inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
         inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
+        inline static std::shared_ptr<spdlog::logger>& GetVulkanLogger() { return s_VulkanLogger; }
     
     private:
         static std::shared_ptr<spdlog::logger> s_CoreLogger;
         static std::shared_ptr<spdlog::logger> s_ClientLogger;
+        static std::shared_ptr<spdlog::logger> s_VulkanLogger;
     };
 }
 
@@ -32,3 +34,9 @@ namespace Autofilm
 #define AF_WARN(...)        ::Autofilm::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define AF_ERROR(...)       ::Autofilm::Log::GetClientLogger()->error(__VA_ARGS__)
 #define AF_FATAL(...)       ::Autofilm::Log::GetClientLogger()->fatal(__VA_ARGS__)
+
+#define AF_VK_TRACE(...)       ::Autofilm::Log::GetVulkanLogger()->trace(__VA_ARGS__)
+#define AF_VK_INFO(...)        ::Autofilm::Log::GetVulkanLogger()->info(__VA_ARGS__)
+#define AF_VK_WARN(...)        ::Autofilm::Log::GetVulkanLogger()->warn(__VA_ARGS__)
+#define AF_VK_ERROR(...)       ::Autofilm::Log::GetVulkanLogger()->error(__VA_ARGS__)
+#define AF_VK_FATAL(...)       ::Autofilm::Log::GetVulkanLogger()->fatal(__VA_ARGS__)
