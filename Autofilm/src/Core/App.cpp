@@ -20,10 +20,10 @@ namespace Autofilm
 
     void App::Run()
     {
-        hello_gst();
+        // hello_gst();
         while (m_running)
         {
-            for (auto& window : _windows)
+            for (auto& window : WindowManager::getWindows())
             {
                 window->onUpdate();
             }
