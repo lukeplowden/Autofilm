@@ -1,6 +1,6 @@
 #pragma once
-#include "Core.h"
-#include "Window.h"
+#include "Core/Core.h"
+#include "Core/Window.h"
 #include "Renderer/Renderer.h"
 #include <vector>
 #include <memory>
@@ -12,12 +12,14 @@ namespace Autofilm
     {
         std::string title;
         RenderAPIType renderer;
-        bool multiWindow;
+        bool multiChannel;
 
-        ProjectSettings(const std::string& title = "Autofilm", 
-                    bool multiWindow = true,
-                    RenderAPIType renderer = RenderAPIType::OpenGL)
-            : title(title), multiWindow(multiWindow), renderer(renderer)
+        ProjectSettings(
+                    const std::string& title = "Autofilm", 
+                    bool multiChannel = true,
+                    RenderAPIType renderer = RenderAPIType::OpenGL
+                )
+            : title(title), multiChannel(multiChannel), renderer(renderer)
         {}
     };
 
