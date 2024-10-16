@@ -6,11 +6,6 @@ namespace Autofilm
 {
     static bool s_GLFWInitialised = false;
 
-    Window* Window::Create(const WindowProperties& props)
-    {
-        return new OpenGLWindow(props);
-    }
- 
     OpenGLWindow::OpenGLWindow(const WindowProperties& props)
     {
         init(props);
@@ -23,9 +18,9 @@ namespace Autofilm
 
     void OpenGLWindow::init(const WindowProperties& props)
     {
-        m_data.title = props.title;
-        m_data.width = props.width;
-        m_data.height = props.height;
+        _data.title = props.title;
+        _data.width = props.width;
+        _data.height = props.height;
 
         AF_CORE_INFO("Creating window {0} ({1}, {2})", props.title, props.width, props.height);
 
@@ -36,23 +31,23 @@ namespace Autofilm
 
             s_GLFWInitialised = true;
         }
-        m_window = glfwCreateWindow((int)props.width, (int)props.height, props.title.c_str(), nullptr, nullptr);
-        glfwMakeContextCurrent(m_window);
+        _window = glfwCreateWindow((int)props.width, (int)props.height, props.title.c_str(), nullptr, nullptr);
+        glfwMakeContextCurrent(_window);
         int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
         AF_CORE_ASSERT(status, "Failed to initalise Glad!");
-        glfwSetWindowUserPointer(m_window, &m_data);
+        glfwSetWindowUserPointer(_window, &_data);
         setVSync(true);
     }
 
     void OpenGLWindow::shutdown()
     {
-        glfwDestroyWindow(m_window);
+        glfwDestroyWindow(_window);
     }
 
     void OpenGLWindow::onUpdate()
     {
         glfwPollEvents();
-        glfwSwapBuffers(m_window);
+        glfwSwapBuffers(_window);
     }
 
     void OpenGLWindow::setVSync(bool enabled)
@@ -62,12 +57,12 @@ namespace Autofilm
         } else {
             glfwSwapInterval(0);
         }
-        m_data.VSync = enabled;
+        _data.VSync = enabled;
     }
 
     bool OpenGLWindow::isVSync() const
     {
-        return m_data.VSync;
+        return _data.VSync;
     }
 
     void OpenGLWindow::setFullscreen(bool fullscreen)
@@ -77,11 +72,11 @@ namespace Autofilm
 
     bool OpenGLWindow::isFullscreen() const
     {
-        return m_data.fullscreen;
+        return _data.fullscreen;
     }
 
     GLFWwindow* OpenGLWindow::getWindow() const
     {
-        return m_window;
+        return _window;
     }
 }

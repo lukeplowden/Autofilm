@@ -18,8 +18,8 @@ namespace Autofilm
 
         void onUpdate() override;
 
-        inline unsigned int getWidth() const override { return m_data.width; };
-        inline unsigned int getHeight() const override { return m_data.height; };
+        inline unsigned int getWidth() const override { return _data.width; };
+        inline unsigned int getHeight() const override { return _data.height; };
 
         // Window Attributes
         void setFullscreen(bool fullscreen) override;
@@ -32,8 +32,8 @@ namespace Autofilm
         virtual void init(const WindowProperties& props);
         virtual void shutdown();
 
-        GLFWwindow* m_window {nullptr};
-        GLFWmonitor* m_monitor {nullptr};
+        GLFWwindow* _window {nullptr};
+        GLFWmonitor* _monitor {nullptr};
 
         struct WindowData
         {
@@ -43,7 +43,7 @@ namespace Autofilm
             bool fullscreen;
         };
 
-        WindowData m_data;
+        WindowData _data;
     };
     
 }

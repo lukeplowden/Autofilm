@@ -11,24 +11,13 @@ namespace Autofilm
         unsigned int width;
         unsigned int height;
 
-        WindowProperties(const std::string& title = "Autofilm", 
+        WindowProperties(
+                        const std::string& title = "Autofilm", 
                         unsigned int width = 1280,
-                        unsigned int height = 720)
+                        unsigned int height = 720
+                    )
             : title(title), width(width), height(height)
         {}
-    };
-
-    class AUTOFILM_API WindowManager
-    {
-    public:
-        WindowManager();
-        virtual ~WindowManager() {}
-        
-        virtual void createWindow(const WindowProperties&  props = WindowProperties());
-        virtual void destroyWindow();
-    private:
-        std::vector<std::unique_ptr<Window>> _windows;
-        // virtual void createWindow
     };
 
     class AUTOFILM_API Window
@@ -50,10 +39,22 @@ namespace Autofilm
         virtual void setFullscreen(bool fullscreen) = 0;
         virtual bool isFullscreen() const = 0;
 
-        static Window* Create(const WindowProperties&  props = WindowProperties());
-
         private:
             int _id;
-            friend class WindowManager;
+    };
+
+    enum class RenderAPIType;
+    class AUTOFILM_API WindowManager
+    {
+    public:
+        static void Init(RenderAPIType type);
+        static void createWindow(const WindowProperties&  props = WindowProperties());
+        static void destroyWindow(){};
+
+        static const std::vector<std::unique_ptr<Window>>& getWindows();
+    private:
+        static std::vector<std::unique_ptr<Window>> _windows;
+        static RenderAPIType _type;
+        static std::function<std::unique_ptr<Window>(const WindowProperties&)> _createWindowFunc;
     };
 }
