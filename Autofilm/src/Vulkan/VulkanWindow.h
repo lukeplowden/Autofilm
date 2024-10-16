@@ -17,6 +17,7 @@ namespace Autofilm
             bool VSync;
             bool fullscreen;
             VkSurfaceKHR surface;
+            VkSwapchainKHR swapchain;
         };
 
     public:
@@ -38,6 +39,7 @@ namespace Autofilm
         // Vulkan specifics
         void createSurface(VkInstance& instance);
         void destroySurface(VkInstance& instance);
+        // void createSwapchain(VkInstance&)
         VkSurfaceKHR getSurface() { return _data.surface; }
 
     private: 
@@ -45,5 +47,6 @@ namespace Autofilm
         virtual void shutdown();
         GLFWwindow* _window;
         WindowData _data;
+        friend class VulkanAPI;
     };
 }

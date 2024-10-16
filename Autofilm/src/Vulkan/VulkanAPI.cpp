@@ -147,7 +147,7 @@ namespace Autofilm
         QueueFamilyIndices indices = findQueueFamilies(device);
 
         bool swapChainAdequate = true;
-        std::vector<SwapChainSupportDetails> swapChainSupportList = querySwapChainSupport(device);
+        std::vector<SwapchainSupportDetails> swapChainSupportList = querySwapchainSupport(device);
         for (auto support : swapChainSupportList) {
             if (support.formats.empty() && support.presentModes.empty()){
                 swapChainAdequate = false;
@@ -177,11 +177,11 @@ namespace Autofilm
         return requiredExtensions.empty();
     }
 
-    std::vector<VulkanAPI::SwapChainSupportDetails> VulkanAPI::querySwapChainSupport(VkPhysicalDevice device)
+    std::vector<VulkanAPI::SwapchainSupportDetails> VulkanAPI::querySwapchainSupport(VkPhysicalDevice device)
     {
-        std::vector<SwapChainSupportDetails> detailsList;
+        std::vector<SwapchainSupportDetails> detailsList;
         for (auto& window : WindowManager::getWindows()) {
-            SwapChainSupportDetails details;
+            SwapchainSupportDetails details;
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
             auto surface = vulkanWindow -> getSurface();
 
