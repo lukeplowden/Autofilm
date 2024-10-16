@@ -6,58 +6,74 @@
 
 namespace Autofilm
 {
-    enum class EventType
+    class BaseEvent
     {
-        None = 0,
-        WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
-        AppTick, AppUpdate, AppRender,
-        KeyPressed, KeyReleased,
-        MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
-    };
-
-    enum EventCategory
-    {
-      None = 0,
-      EventCategoryApplication  = BIT(0),  
-      EventCategoryInput        = BIT(1),  
-      EventCategoryKeyboard     = BIT(2),  
-      EventCategoryMouse        = BIT(3),  
-      EventCategoryMouseButton  = BIT(4),  
-    };
-
-    class Event
-    {
-        friend class EventDispatcher;
     public:
-        enum struct Type 
-        { 
-            Keyboard, Mouse, App 
-        };
-
+        virtual ~BaseEvent() {};
     protected:
-        bool _handled;
+        static size_t getNextType()
+        {
+            static size_t type_count = 0;
+            return type_count++;
+        }
     };
 
-    class EventDispatcher
+    template <typename EventType>
+    class Event : BaseEvent
     {
-        template<typename T>
-        using EventFn = std::function<bool(T&)>;
     public:
-        EventDispatcher(Event& event)
-            : _event(event)
+        Event(const EventType& event) : event_(event) {}
+        const EventType& _event;
+
+        static size_t type()
         {
+            static size_t _type = BaseEvent::getNextType();
+            return _type;
+        } 
+    };
+
+    class EventManager
+    {
+    public:
+        template <class EventType>
+        using callType = std::function<void(const EventType&)>;
+
+        template <typename EventType>
+        void subscribe(callType<EventType> callable)
+        {
+            size_t type = Event<EventType>::type();
+            if (type >= _subscribers.size()){
+                _subscribers.resize(type+1);
+            }
+            _subscribers.push_back(CallbackWrapper<EventType>(callable));
         }
 
-        template <typename T>
-        bool dispatch(EventFn<T> func)
+        template <typename EventType>
+        void dispatch(const EventType& event)
         {
-            if(_event.getEventType() == T::getStaticType()){
-                _event.m_Handled = func(*(T*)&m_event);
-                return true;
+            size_t type = Event<EventType>::type();
+            if (type >= _subscribers.size()){
+                _subscribers.resize(type+1);
             }
-            return false;
+
+            Event<EventType> eventWrapper(event);
+            for (auto& receiver : _subscribers[type]){
+                receiver(eventWrapper);
+            }
         }
+
+        template <typename EventType>
+        struct CallbackWrapper
+        {
+            CallbackWrapper(callType callable) : _callable(callable) {}
+            void operator() (const BaseEvent& event) {
+                _callable(static_cast<const Event<EventType>&(event).event_);
+            }
+
+            callType<EventType _callable;
+        } ;
+
     private:
-        Event& _event;
+        std::vector<std::vector<callType<BaseEvent>>> _subscribers;
     };
 }
