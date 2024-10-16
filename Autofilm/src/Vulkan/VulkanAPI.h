@@ -24,8 +24,9 @@ namespace Autofilm
         VkQueue _graphicsQueue;
         VkQueue _presentQueue;
 
-
         void createInstance();
+        void setupDebugMessenger();
+        void createSurfaces();
         void pickPhysicalDevice();
         bool isDeviceSuitable(VkPhysicalDevice device);
         void createLogicalDevice();
@@ -43,6 +44,18 @@ namespace Autofilm
         };
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
+        bool checkDeviceExtensionsSupport(VkPhysicalDevice device);
+        const std::vector<const char*> _deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+        struct SwapChainSupportDetails
+        {
+            VkSurfaceCapabilitiesKHR capabilities;
+            std::vector<VkSurfaceFormatKHR> formats;
+            std::vector<VkPresentModeKHR> presentModes;
+        };
+        std::vector<VulkanAPI::SwapChainSupportDetails> querySwapChainSupport(VkPhysicalDevice device);
+
         // Validation Layers
         bool _enableValidationLayers = true;
         VkDebugUtilsMessengerEXT _debugMessenger;
@@ -50,7 +63,6 @@ namespace Autofilm
             "VK_LAYER_KHRONOS_validation"
         };
         bool checkValidationLayerSupport();
-        void setupDebugMessenger();
         std::vector<const char*> getRequiredExtensions();
         void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
         static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
