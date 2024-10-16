@@ -13,6 +13,8 @@ int	main(int argc, char** argv)
 	AF_CORE_INFO("Initialised Log!");
 	AF_INFO("Initialised Log!");
 	auto app = Autofilm::CreateApp();
+	Autofilm::WindowManager::Init(app->_settings.renderer); 
+	Autofilm::WindowManager::createWindow();
     Autofilm::Renderer::init(app->_settings.renderer);
 	app->Run();
 	delete app;
