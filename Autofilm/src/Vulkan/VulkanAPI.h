@@ -23,6 +23,7 @@ namespace Autofilm
         VkPhysicalDevice _physicalDevice;
         VkQueue _graphicsQueue;
         VkQueue _presentQueue;
+        VkPipelineLayout pipelineLayout;
 
         void createInstance();
         void setupDebugMessenger();
@@ -64,9 +65,9 @@ namespace Autofilm
         VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
         VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
 
-        // Image views
-
-
+        // Shader modules
+        VkShaderModule createShaderModule(const std::vector<char>& code);
+        
         // Validation Layers
         bool _enableValidationLayers = true;
         VkDebugUtilsMessengerEXT _debugMessenger;
