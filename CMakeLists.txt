@@ -57,6 +57,8 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/Core/EntryPoint.h
     ${AUTOFILM_SRC}/Core/Log.cpp
     ${AUTOFILM_SRC}/Core/Log.h
+    ${AUTOFILM_SRC}/Core/File.cpp
+    ${AUTOFILM_SRC}/Core/File.h
     ${AUTOFILM_SRC}/Core/Window.h
     ${AUTOFILM_SRC}/Core/WindowManager.cpp
     ${AUTOFILM_SRC}/Events/Event.h
