@@ -20,7 +20,7 @@ namespace Autofilm
             VkSwapchainKHR swapchain;
             std::vector<VkImage> swapchainImages;
             VkFormat swapchainImageFormat;
-            VkExtent2D swapChainExtent;
+            VkExtent2D swapchainExtent;
             std::vector<VkImageView> swapchainImageViews;
         };
 
