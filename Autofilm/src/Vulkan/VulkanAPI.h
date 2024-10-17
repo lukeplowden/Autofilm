@@ -1,5 +1,5 @@
 #pragma once
-#define GLFW_INCLUDE_VULKAN
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 #include "Renderer/RenderAPI.h"
@@ -33,6 +33,7 @@ namespace Autofilm
         void createSwapchains();
         void createImageViews();
         void createGraphicsPipeline();
+
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
             std::optional<uint32_t> computeFamily;
