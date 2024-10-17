@@ -31,6 +31,8 @@ namespace Autofilm
         bool isDeviceSuitable(VkPhysicalDevice device);
         void createLogicalDevice();
         void createSwapchains();
+        void createImageViews();
+        void createGraphicsPipeline();
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
             std::optional<uint32_t> computeFamily;
@@ -48,14 +50,21 @@ namespace Autofilm
         const std::vector<const char*> _deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
+
+        // Swapchains
         struct SwapchainSupportDetails
         {
             VkSurfaceCapabilitiesKHR capabilities;
             std::vector<VkSurfaceFormatKHR> formats;
             std::vector<VkPresentModeKHR> presentModes;
         };
-        std::vector<VulkanAPI::SwapchainSupportDetails> querySwapchainSupport(VkPhysicalDevice device);
+        VulkanAPI::SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
         VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
+
+        // Image views
+
 
         // Validation Layers
         bool _enableValidationLayers = true;

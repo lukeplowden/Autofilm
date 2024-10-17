@@ -37,6 +37,41 @@ namespace Autofilm
         vkDestroySurfaceKHR(instance, _data.surface, nullptr);
     }
 
+    void VulkanWindow::createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat)
+    {
+        VkResult result = vkCreateSwapchainKHR(device, &createInfo, nullptr, &_data.swapchain);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a Vulkan Swapchain.");
+        vkGetSwapchainImagesKHR(device, _data.swapchain, &imageCount, nullptr);
+        _data.swapchainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(device, _data.swapchain, &imageCount, _data.swapchainImages.data());
+        _data.swapchainImageFormat = imageFormat;
+    }
+
+    void VulkanWindow::createImageViews(VkDevice& device)
+    {
+        _data.swapchainImageViews.resize(
+            _data.swapchainImages.size()
+        );
+        for (size_t i = 0; i < _data.swapchainImages.size(); i++) {
+            VkImageViewCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            createInfo.image = _data.swapchainImages[i];
+            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            createInfo.format = _data.swapchainImageFormat;
+            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            createInfo.subresourceRange.baseMipLevel = 0;
+            createInfo.subresourceRange.levelCount = 1;
+            createInfo.subresourceRange.baseArrayLayer = 0;
+            createInfo.subresourceRange.layerCount = 1;
+            VkResult result = vkCreateImageView(device, &createInfo, nullptr, &_data.swapchainImageViews[i]);
+            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create an image view");
+        }
+    }
+
     VulkanWindow::~VulkanWindow()
     {
         shutdown();
@@ -44,6 +79,10 @@ namespace Autofilm
 
     void VulkanWindow::shutdown()
     {
+        // vkDestroySurfaceKHR()
+        // for (auto imageView : _data.swapChainImageViews) {
+            // vkDestroyImageView(device, imageView, nullptr);
+        // }
         glfwDestroyWindow(_window);
     }
 

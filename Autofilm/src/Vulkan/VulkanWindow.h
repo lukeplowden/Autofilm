@@ -18,10 +18,14 @@ namespace Autofilm
             bool fullscreen;
             VkSurfaceKHR surface;
             VkSwapchainKHR swapchain;
+            std::vector<VkImage> swapchainImages;
+            VkFormat swapchainImageFormat;
+            VkExtent2D swapChainExtent;
+            std::vector<VkImageView> swapchainImageViews;
         };
 
     public:
-        WindowData getData() { return _data;};
+        WindowData getData() { return _data; }
 
         VulkanWindow(const WindowProperties& props);
         virtual ~VulkanWindow();
@@ -37,10 +41,14 @@ namespace Autofilm
         void setVSync(bool enabled) override;
         bool isVSync() const override;
         // Vulkan specifics
+        // Surface
         void createSurface(VkInstance& instance);
         void destroySurface(VkInstance& instance);
-        // void createSwapchain(VkInstance&)
         VkSurfaceKHR getSurface() { return _data.surface; }
+        // Swapchain
+        void createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat);
+        // Image views
+        void createImageViews(VkDevice& device);
 
     private: 
         virtual void init(const WindowProperties& props);
