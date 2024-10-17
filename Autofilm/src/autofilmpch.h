@@ -6,6 +6,7 @@
 #include <set>
 #include <memory>
 #include <filesystem>
+#include <fstream>
 
 #ifdef AF_PLATFORM_WINDOWS
     #include <Windows.h>
