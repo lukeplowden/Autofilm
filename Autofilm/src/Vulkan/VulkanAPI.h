@@ -23,7 +23,9 @@ namespace Autofilm
         VkPhysicalDevice _physicalDevice;
         VkQueue _graphicsQueue;
         VkQueue _presentQueue;
-        VkPipelineLayout pipelineLayout;
+        VkRenderPass _renderPass;
+        VkPipelineLayout _pipelineLayout;
+        VkPipeline graphicsPipeline;
 
         void createInstance();
         void setupDebugMessenger();
@@ -33,7 +35,9 @@ namespace Autofilm
         void createLogicalDevice();
         void createSwapchains();
         void createImageViews();
+        void createRenderPass();
         void createGraphicsPipeline();
+        void createFramebuffers();
 
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
