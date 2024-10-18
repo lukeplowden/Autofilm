@@ -89,7 +89,8 @@ namespace Autofilm
             framebufferInfo.pAttachments = attachments;
             framebufferInfo.width = _data.swapchainExtent.width;
             framebufferInfo.height = _data.swapchainExtent.height;
-
+            framebufferInfo.layers = 1;
+            
             VkResult result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &_data.swapchainFramebuffers[i]);
             AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a framebuffer.");       
         }
