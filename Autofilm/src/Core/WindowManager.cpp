@@ -32,6 +32,7 @@ namespace Autofilm
         }
     }
 
+    // I should change this to have less heap allocations ...
     void WindowManager::createWindow(const WindowProperties&  props)
     {
         if (_createWindowFunc) {
