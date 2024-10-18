@@ -22,6 +22,7 @@ namespace Autofilm
             VkFormat swapchainImageFormat;
             VkExtent2D swapchainExtent;
             std::vector<VkImageView> swapchainImageViews;
+            std::vector<VkFramebuffer> swapchainFramebuffers;
         };
 
     public:
@@ -49,6 +50,8 @@ namespace Autofilm
         void createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat);
         // Image views
         void createImageViews(VkDevice& device);
+        // Framebuffers
+        void createFramebuffers(VkDevice& device, VkRenderPass& renderPass);
 
     private: 
         virtual void init(const WindowProperties& props);

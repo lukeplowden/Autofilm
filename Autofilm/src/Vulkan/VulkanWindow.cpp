@@ -72,6 +72,28 @@ namespace Autofilm
         }
     }
 
+    void VulkanWindow::createFramebuffers(VkDevice& device, VkRenderPass& renderPass)
+    {
+        const auto imageViews = _data.swapchainImageViews;
+        _data.swapchainFramebuffers.resize(imageViews.size());
+        for (size_t i = 0; i < imageViews.size(); i++) {
+            VkImageView attachments[] = {
+                imageViews[i]
+            };
+
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width = _data.swapchainExtent.width;
+            framebufferInfo.height = _data.swapchainExtent.height;
+
+            VkResult result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &_data.swapchainFramebuffers[i]);
+            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a framebuffer.");       
+        }
+    }
+
     VulkanWindow::~VulkanWindow()
     {
         shutdown();
