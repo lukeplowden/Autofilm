@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "Renderer/RenderAPI.h"
-#include "Vulkan/VulkanUtils.h"
+#include "Vulkan/VulkanWindow.h"
 
 namespace Autofilm
 {
@@ -17,7 +17,6 @@ namespace Autofilm
 		void clear() override;
     
     private:
-        VulkanUtils vulkanUtils;
         VkInstance _instance;
         VkDevice _device;
         VkPhysicalDevice _physicalDevice;
@@ -25,7 +24,9 @@ namespace Autofilm
         VkQueue _presentQueue;
         VkRenderPass _renderPass;
         VkPipelineLayout _pipelineLayout;
-        VkPipeline graphicsPipeline;
+        VkPipeline _graphicsPipeline;
+        VkCommandPool _commandPool;
+        VkCommandBuffer _commandBuffer;
 
         void createInstance();
         void setupDebugMessenger();
@@ -38,6 +39,10 @@ namespace Autofilm
         void createRenderPass();
         void createGraphicsPipeline();
         void createFramebuffers();
+        void createCommandPool();
+        void createCommandBuffer();
+
+        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData);
 
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;

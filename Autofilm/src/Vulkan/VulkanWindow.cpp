@@ -37,7 +37,7 @@ namespace Autofilm
         vkDestroySurfaceKHR(instance, _data.surface, nullptr);
     }
 
-    void VulkanWindow::createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat)
+    void VulkanWindow::createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat, VkExtent2D extent)
     {
         VkResult result = vkCreateSwapchainKHR(device, &createInfo, nullptr, &_data.swapchain);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a Vulkan Swapchain.");
@@ -45,6 +45,7 @@ namespace Autofilm
         _data.swapchainImages.resize(imageCount);
         vkGetSwapchainImagesKHR(device, _data.swapchain, &imageCount, _data.swapchainImages.data());
         _data.swapchainImageFormat = imageFormat;
+        _data.swapchainExtent = extent;
     }
 
     void VulkanWindow::createImageViews(VkDevice& device)

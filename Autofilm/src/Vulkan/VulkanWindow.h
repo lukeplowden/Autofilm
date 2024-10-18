@@ -7,6 +7,8 @@
 
 namespace Autofilm
 {
+    class VulkanAPI;
+
     class AUTOFILM_API VulkanWindow : public Window
     {
     private: 
@@ -47,7 +49,7 @@ namespace Autofilm
         void destroySurface(VkInstance& instance);
         VkSurfaceKHR getSurface() { return _data.surface; }
         // Swapchain
-        void createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat);
+        void createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat, VkExtent2D extent);
         // Image views
         void createImageViews(VkDevice& device);
         // Framebuffers
