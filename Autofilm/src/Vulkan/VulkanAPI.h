@@ -27,6 +27,9 @@ namespace Autofilm
         VkPipeline _graphicsPipeline;
         VkCommandPool _commandPool;
         VkCommandBuffer _commandBuffer;
+        VkSemaphore _imageAvailableSemaphore;
+        VkSemaphore _renderFinishedSemaphore;
+        VkFence _inFlightFence;
 
         void createInstance();
         void setupDebugMessenger();
@@ -41,6 +44,8 @@ namespace Autofilm
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
+        void createSyncObjects();
+        void drawFrame() override;
 
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData);
 
