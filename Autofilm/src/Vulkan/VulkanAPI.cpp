@@ -19,10 +19,14 @@ namespace Autofilm
         createFramebuffers();
         createCommandPool();
         createCommandBuffer();
+        createSyncObjects();
     }
 
     void VulkanAPI::shutdown()
     {
+        vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
+        vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
+        vkDestroyFence(_device, _inFlightFence, nullptr);
         vkDestroyCommandPool(_device, _commandPool, nullptr);
         vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
         vkDestroyRenderPass(_device, _renderPass, nullptr);
@@ -37,6 +41,56 @@ namespace Autofilm
     void VulkanAPI::clear()
     {
 
+    }
+
+    void VulkanAPI::drawFrame()
+    {
+        vkWaitForFences(_device, 1, &_inFlightFence, VK_TRUE, UINT64_MAX);
+        vkResetFences(_device, 1, &_inFlightFence);
+        vkResetCommandBuffer(_commandBuffer, 0);
+
+        std::vector<uint32_t> imageIndices;
+        std::vector<VkSwapchainKHR> swapchains;
+
+        for (const auto& window : WindowManager::getWindows()) {
+            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
+            uint32_t imageIndex;
+
+            vkAcquireNextImageKHR(_device, vulkanWindow->_data.swapchain, UINT64_MAX, _imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+            recordCommandBuffer(_commandBuffer, imageIndex, vulkanWindow->_data);
+
+            imageIndices.push_back(imageIndex);
+            swapchains.push_back(vulkanWindow->_data.swapchain);
+        }
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkSemaphore waitSemaphores[] = {_imageAvailableSemaphore};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &_commandBuffer;
+
+        VkSemaphore signalSemaphores[] = {_renderFinishedSemaphore};
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFence);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to submit draw command buffer.");
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+        presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());
+        presentInfo.pSwapchains = swapchains.data();
+        presentInfo.pImageIndices = imageIndices.data();
+
+        result = vkQueuePresentKHR(_presentQueue, &presentInfo);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to present swapchain image.");
     }
 
     void VulkanAPI::createInstance()
@@ -78,7 +132,7 @@ namespace Autofilm
 
     void VulkanAPI::createSurfaces()
     {
-        for (auto& window : WindowManager::getWindows()) {
+        for (const auto& window : WindowManager::getWindows()) {
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
             AF_VK_ASSERT(vulkanWindow, "Failed to cast window to VulkanWindow. The window type does not match the renderer.");
             vulkanWindow->createSurface(_instance);
@@ -87,7 +141,7 @@ namespace Autofilm
 
     void VulkanAPI::createImageViews()
     {
-        for (auto& window : WindowManager::getWindows()) {
+        for (const auto& window : WindowManager::getWindows()) {
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
             AF_VK_ASSERT(vulkanWindow, "Failed to cast window to VulkanWindow. The window type does not match the renderer.");
             vulkanWindow->createImageViews(_device);
@@ -233,12 +287,22 @@ namespace Autofilm
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
 
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = 1;
         renderPassInfo.pAttachments = &colorAttachment;
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
 
         VkResult result = vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a render pass.");
@@ -457,6 +521,22 @@ namespace Autofilm
         vkCmdEndRenderPass(commandBuffer);
         VkResult result2 = vkEndCommandBuffer(commandBuffer);
         AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
+    }
+
+    void VulkanAPI::createSyncObjects()
+    {
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VkResult result1 = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore);
+        VkResult result2 = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore);
+        VkResult result3 = vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence);
+        AF_VK_ASSERT_EQUAL(result1, VK_SUCCESS, "Failed to create semaphores.");
+        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to create semaphores.");
+        AF_VK_ASSERT_EQUAL(result3, VK_SUCCESS, "Failed to create semaphores.");
     }
 
     VkShaderModule VulkanAPI::createShaderModule(const std::vector<char>& code) 
