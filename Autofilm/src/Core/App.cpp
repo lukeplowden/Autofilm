@@ -25,6 +25,7 @@ namespace Autofilm
         {
             for (auto& window : WindowManager::getWindows())
             {
+                Renderer::drawFrame();
                 window->onUpdate();
             }
         }
