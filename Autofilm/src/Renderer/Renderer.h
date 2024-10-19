@@ -9,6 +9,7 @@ namespace Autofilm
     public:
         static void init(RenderAPIType renderer);
         static void shutdown();
+        static void drawFrame();
     private:
         static std::unique_ptr<RenderAPI> s_api;
     };
