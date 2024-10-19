@@ -10,5 +10,6 @@ namespace Autofilm
         void shutdown() override;
         void clearColor(const glm::vec4& color) override;
 		void clear() override;
+        void drawFrame() override;
     };
 }
