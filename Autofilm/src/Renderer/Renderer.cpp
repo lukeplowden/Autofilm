@@ -27,4 +27,9 @@ namespace Autofilm
     {
         s_api->shutdown();
     }
+    
+    void Renderer::drawFrame()
+    {
+        s_api->drawFrame();
+    } 
 }

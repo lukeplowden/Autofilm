@@ -17,6 +17,7 @@ namespace Autofilm
     public:
         virtual void init() = 0;
         virtual void shutdown() = 0;
+        virtual void drawFrame() = 0;
         virtual void clearColor(const glm::vec4& color) = 0;
 		virtual void clear() = 0;
     };
