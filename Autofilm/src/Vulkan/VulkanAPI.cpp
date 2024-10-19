@@ -119,7 +119,7 @@ namespace Autofilm
         QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
         
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
+        std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsAndComputeFamily.value(), indices.presentFamily.value() };
 
         float queuePriority = 1.0f;
 
@@ -401,7 +401,7 @@ namespace Autofilm
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
         VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a command pool.");
     }
