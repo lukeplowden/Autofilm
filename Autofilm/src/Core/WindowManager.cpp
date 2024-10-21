@@ -2,7 +2,6 @@
 #include "Core/Core.h"
 #include "Core/Window.h"
 #include "Renderer/RenderAPI.h"
-#include "OpenGL/OpenGLWindow.h"
 #include "Vulkan/VulkanWindow.h"
 
 namespace Autofilm
@@ -18,11 +17,6 @@ namespace Autofilm
             case RenderAPIType::Vulkan:
                 _createWindowFunc = [](const WindowProperties& props) {
                     return std::make_unique<VulkanWindow>(props);
-                };
-                break;
-            case RenderAPIType::OpenGL:
-                _createWindowFunc = [](const WindowProperties& props) {
-                    return std::make_unique<OpenGLWindow>(props);
                 };
                 break;
             default:

@@ -18,15 +18,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # External dependencies
 add_subdirectory(${AUTOFILM_EXT}/glfw)
-find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
 add_subdirectory(${AUTOFILM_EXT}/spdlog)
-add_library(glad STATIC
-    ${AUTOFILM_EXT}/glad/src/glad.c
-)
-target_include_directories(glad PUBLIC
-    ${AUTOFILM_EXT}/glad/include
-)
 
 # GStreamer
 if(DEFINED ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
@@ -62,10 +55,6 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/Core/Window.h
     ${AUTOFILM_SRC}/Core/WindowManager.cpp
     ${AUTOFILM_SRC}/Events/Event.h
-    ${AUTOFILM_SRC}/OpenGL/OpenGLAPI.cpp
-    ${AUTOFILM_SRC}/OpenGL/OpenGLAPI.h
-    ${AUTOFILM_SRC}/OpenGL/OpenGLWindow.cpp
-    ${AUTOFILM_SRC}/OpenGL/OpenGLWindow.h    
     ${AUTOFILM_SRC}/Vulkan/VulkanAPI.cpp
     ${AUTOFILM_SRC}/Vulkan/VulkanAPI.h
     ${AUTOFILM_SRC}/Vulkan/VulkanUtils.cpp
@@ -84,7 +73,6 @@ source_group(TREE "${AUTOFILM_SRC}" FILES ${Autofilm_SOURCES})
 set_property(TARGET Autofilm PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
 target_include_directories(Autofilm PUBLIC
-    ${AUTOFILM_EXT}/glad/include
     $ENV{VULKAN_SDK}/include
     ${AUTOFILM_EXT}/glfw/include
     ${AUTOFILM_EXT}/spdlog/include
@@ -93,9 +81,7 @@ target_include_directories(Autofilm PUBLIC
 )
 
 target_link_libraries(Autofilm PUBLIC 
-    OpenGL::GL
     Vulkan::Vulkan
-    glad
     glfw
     spdlog::spdlog
     gstreamer-1.0

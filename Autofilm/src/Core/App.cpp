@@ -1,10 +1,7 @@
 #include "autofilmpch.h"
 #include "App.h"
 #include "Log.h"
-#include <glad/glad.h>
 #include "Video/VideoPlayer.h"
-#include <GLFW/glfw3.h>
-#include "OpenGL/OpenGLWindow.h"
 
 namespace Autofilm
 {

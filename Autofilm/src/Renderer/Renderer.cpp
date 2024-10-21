@@ -1,7 +1,6 @@
 #include "autofilmpch.h"
 #include "Renderer/Renderer.h"
 #include "Core/Log.h"
-#include "OpenGL/OpenGLAPI.h"
 #include "Vulkan/VulkanAPI.h"
 
 namespace Autofilm 
@@ -12,9 +11,6 @@ namespace Autofilm
     {
         switch (renderer)
         {
-            case RenderAPIType::OpenGL:
-                s_api = std::make_unique<OpenGLAPI>();
-                break;
             case RenderAPIType::Vulkan:
                 s_api = std::make_unique<VulkanAPI>();
                 break;

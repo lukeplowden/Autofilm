@@ -17,7 +17,7 @@ namespace Autofilm
         ProjectSettings(
                     const std::string& title = "Autofilm", 
                     bool multiChannel = true,
-                    RenderAPIType renderer = RenderAPIType::OpenGL
+                    RenderAPIType renderer = RenderAPIType::Vulkan
                 )
             : title(title), multiChannel(multiChannel), renderer(renderer)
         {}
