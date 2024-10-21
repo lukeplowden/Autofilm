@@ -19,7 +19,10 @@ namespace Autofilm
         createFramebuffers();
         createCommandPool();
         createCommandBuffer();
-        createSyncObjects();
+        for (auto& window : WindowManager::getWindows())
+        {
+            createSyncObjects();
+        }
     }
 
     void VulkanAPI::shutdown()
@@ -45,11 +48,13 @@ namespace Autofilm
 
     void draw()
     {
-        // Update scene (convert user data to renderer data and bind buffers)
+        // Function: update scene 
+        // convert scene objects data to renderer data
+        // Bind buffers
         
         // Wait for fences and reset everything
 
-        // Draw geometry:
+        // Function Draw geometry:
         // Begin command buffer
         // For each Scene
             // Begin renderpass
@@ -69,52 +74,152 @@ namespace Autofilm
 
     void VulkanAPI::drawFrame()
     {
-        vkWaitForFences(_device, 1, &_inFlightFence, VK_TRUE, UINT64_MAX);
-        vkResetFences(_device, 1, &_inFlightFence);
+        int i = 0;
+
+        for (const auto& window : WindowManager::getWindows()) {
+            vkWaitForFences(_device, 1, &_inFlightFences[i], VK_TRUE, UINT64_MAX);
+            vkResetFences(_device, 1, &_inFlightFences[i]);
+            i++;
+        }
+        i = 0;
+
         vkResetCommandBuffer(_commandBuffer, 0);
 
         std::vector<uint32_t> imageIndices;
         std::vector<VkSwapchainKHR> swapchains;
 
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+        VkResult result = vkBeginCommandBuffer(_commandBuffer, &beginInfo);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to begin recording command buffer!");
+        
+
         for (const auto& window : WindowManager::getWindows()) {
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
+            auto windowData = vulkanWindow->_data;
             uint32_t imageIndex;
+            
+            vkAcquireNextImageKHR(_device, vulkanWindow->_data.swapchain, UINT64_MAX, _imageAvailableSemaphores[i], VK_NULL_HANDLE, &imageIndex);
+            
 
-            vkAcquireNextImageKHR(_device, vulkanWindow->_data.swapchain, UINT64_MAX, _imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-            recordCommandBuffer(_commandBuffer, imageIndex, vulkanWindow->_data);
+            VkRenderPassBeginInfo renderPassInfo{};
+            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassInfo.renderPass = _renderPass;
+            renderPassInfo.framebuffer = windowData.swapchainFramebuffers[imageIndex];
+            renderPassInfo.renderArea.offset = { 0, 0 };
+            renderPassInfo.renderArea.extent = windowData.swapchainExtent;
+
+            VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+            renderPassInfo.clearValueCount = 1;
+            renderPassInfo.pClearValues = &clearColor;
+            vkCmdBeginRenderPass(_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = static_cast<float>(windowData.swapchainExtent.width);
+            viewport.height = static_cast<float>(windowData.swapchainExtent.height);
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(_commandBuffer, 0, 1, &viewport);
+
+            VkRect2D scissor{};
+            scissor.offset = {0, 0};
+            scissor.extent = windowData.swapchainExtent;
+            vkCmdSetScissor(_commandBuffer, 0, 1, &scissor);
+
+            vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
+            vkCmdEndRenderPass(_commandBuffer);
 
             imageIndices.push_back(imageIndex);
             swapchains.push_back(vulkanWindow->_data.swapchain);
+            i++;
         }
+        i = 0;
+        VkResult result2 = vkEndCommandBuffer(_commandBuffer);
+        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        for (const auto& window : WindowManager::getWindows())
+        {
+            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
+            auto windowData = vulkanWindow->_data;
 
-        VkSemaphore waitSemaphores[] = {_imageAvailableSemaphore};
-        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &_commandBuffer;
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        VkSemaphore signalSemaphores[] = {_renderFinishedSemaphore};
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
+            VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[i] };
+            VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            submitInfo.waitSemaphoreCount = 1;
+            submitInfo.pWaitSemaphores = waitSemaphores;
+            submitInfo.pWaitDstStageMask = waitStages;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &_commandBuffer;
 
-        VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFence);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to submit draw command buffer.");
+            VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[i]};
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = signalSemaphores;
 
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-        presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());
-        presentInfo.pSwapchains = swapchains.data();
-        presentInfo.pImageIndices = imageIndices.data();
+            VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[i]);
+            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to submit draw command buffer.");
 
-        result = vkQueuePresentKHR(_presentQueue, &presentInfo);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to present swapchain image.");
+            VkPresentInfoKHR presentInfo{};
+            presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+            presentInfo.waitSemaphoreCount = 1;
+            presentInfo.pWaitSemaphores = signalSemaphores;
+            VkSwapchainKHR swapchains[] = { windowData.swapchain };
+            presentInfo.swapchainCount = 1;
+            presentInfo.pSwapchains = swapchains;
+            presentInfo.pImageIndices = &imageIndices[i];
+
+            result = vkQueuePresentKHR(_presentQueue, &presentInfo);
+            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to present swapchain image.");
+            i++;
+        }
+    }
+
+    void VulkanAPI::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData)
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+        VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to begin recording command buffer!");
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = _renderPass;
+        renderPassInfo.framebuffer = windowData.swapchainFramebuffers[imageIndex];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = windowData.swapchainExtent;
+
+        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(windowData.swapchainExtent.width);
+        viewport.height = static_cast<float>(windowData.swapchainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = windowData.swapchainExtent;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        vkCmdEndRenderPass(commandBuffer);
+        VkResult result2 = vkEndCommandBuffer(commandBuffer);
+        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
     }
 
     void VulkanAPI::createInstance()
@@ -389,8 +494,8 @@ namespace Autofilm
 
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.viewportCount = WindowManager::getWindows().size();
-        viewportState.scissorCount = WindowManager::getWindows().size();
+        viewportState.viewportCount = 1; //WindowManager::getWindows().size();
+        viewportState.scissorCount = 1;// WindowManager::getWindows().size();
         // Nullptr because I have dynamic state. Important for multi window application
         viewportState.pViewports = nullptr;
         viewportState.pScissors = nullptr;
@@ -506,48 +611,6 @@ namespace Autofilm
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a command pool.");
     }
 
-    void VulkanAPI::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData)
-    {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0; // Optional
-        beginInfo.pInheritanceInfo = nullptr; // Optional
-        VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to begin recording command buffer!");
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = _renderPass;
-        renderPassInfo.framebuffer = windowData.swapchainFramebuffers[imageIndex];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = windowData.swapchainExtent;
-
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(windowData.swapchainExtent.width);
-        viewport.height = static_cast<float>(windowData.swapchainExtent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = windowData.swapchainExtent;
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-        vkCmdEndRenderPass(commandBuffer);
-        VkResult result2 = vkEndCommandBuffer(commandBuffer);
-        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
-    }
-
     void VulkanAPI::createSyncObjects()
     {
         VkSemaphoreCreateInfo semaphoreInfo{};
@@ -557,14 +620,21 @@ namespace Autofilm
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        VkResult result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        VkSemaphore imageAvailableSemaphore;
+        VkSemaphore renderFinishedSemaphore;
+        VkFence inFlightFence;
 
-        result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore);
+        VkResult result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        _imageAvailableSemaphores.push_back(imageAvailableSemaphore);
 
-        result = vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence);
+        result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &renderFinishedSemaphore);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        _renderFinishedSemaphores.push_back(renderFinishedSemaphore);
+
+        result = vkCreateFence(_device, &fenceInfo, nullptr, &inFlightFence);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        _inFlightFences.push_back(inFlightFence);
     }
 
     VkShaderModule VulkanAPI::createShaderModule(const std::vector<char>& code) 
