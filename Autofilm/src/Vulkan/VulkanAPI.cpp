@@ -43,6 +43,30 @@ namespace Autofilm
 
     }
 
+    void draw()
+    {
+        // Update scene (convert user data to renderer data and bind buffers)
+        
+        // Wait for fences and reset everything
+
+        // Draw geometry:
+        // Begin command buffer
+        // For each Scene
+            // Begin renderpass
+            // Set viewport & scissors
+            // For each Camera
+                // If Camera is active
+                    // Set viewport and scissor
+                    // For each IRenderable in the Scene
+                        // VkDraw command
+            // End renderpass
+        // End command buffer
+
+        // For each Frame
+            // Submit each render command to queue
+            // Submit each present command to queue
+    }
+
     void VulkanAPI::drawFrame()
     {
         vkWaitForFences(_device, 1, &_inFlightFence, VK_TRUE, UINT64_MAX);
@@ -449,7 +473,6 @@ namespace Autofilm
         vkDestroyShaderModule(_device, vertShaderModule, nullptr);
     }
 
-    // Should be in Window?
     void VulkanAPI::createFramebuffers()
     {
         for (auto& window : WindowManager::getWindows()) {
@@ -466,6 +489,7 @@ namespace Autofilm
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
+
         VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a command pool.");
     }
@@ -477,6 +501,7 @@ namespace Autofilm
         allocInfo.commandPool = _commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = 1;
+        
         VkResult result = vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffer);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a command pool.");
     }
@@ -531,12 +556,15 @@ namespace Autofilm
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        VkResult result1 = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore);
-        VkResult result2 = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore);
-        VkResult result3 = vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence);
-        AF_VK_ASSERT_EQUAL(result1, VK_SUCCESS, "Failed to create semaphores.");
-        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to create semaphores.");
-        AF_VK_ASSERT_EQUAL(result3, VK_SUCCESS, "Failed to create semaphores.");
+
+        VkResult result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphore);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+
+        result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphore);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+
+        result = vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFence);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
     }
 
     VkShaderModule VulkanAPI::createShaderModule(const std::vector<char>& code) 
