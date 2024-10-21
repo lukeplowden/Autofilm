@@ -20,9 +20,9 @@ namespace Autofilm
         // hello_gst();
         while (m_running)
         {
+            Renderer::drawFrame();
             for (auto& window : WindowManager::getWindows())
             {
-                Renderer::drawFrame();
                 window->onUpdate();
             }
         }
