@@ -30,6 +30,9 @@ namespace Autofilm
         VkSemaphore _imageAvailableSemaphore;
         VkSemaphore _renderFinishedSemaphore;
         VkFence _inFlightFence;
+        std::vector<VkSemaphore> _imageAvailableSemaphores;
+        std::vector<VkSemaphore> _renderFinishedSemaphores;
+        std::vector<VkFence> _inFlightFences;
 
         void createInstance();
         void setupDebugMessenger();
