@@ -46,6 +46,32 @@ namespace Autofilm
 
     }
 
+    /* OPTION ONE many render passes
+
+        function draw:
+            update camera/ scene infos
+
+            wait for fences (renderFence)
+            reset fences (current frame)
+
+            for each rendering thread/window:
+                reset command pool (current frame)
+                get next frame
+                begin command buffer (current frame)
+                begin render pass
+                for each camera
+                    if camera is active
+                        set viewport and scissors
+                        for each Irenderable (current scene):
+                            VkDraw
+                end render pass
+                end command buffer (current frame)
+            
+            Set number of 
+            Submit render
+            Submit present
+    */
+
     void draw()
     {
         // Function: update scene 
