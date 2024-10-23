@@ -30,10 +30,27 @@ namespace Autofilm
         VkSemaphore _imageAvailableSemaphore;
         VkSemaphore _renderFinishedSemaphore;
         VkFence _inFlightFence;
+
+        // Some kind of thread management required
+
+        // Per window resources
+        // Window ID
+        // Surface
+        // swapchain
+        // swapchain images
+        // swapchain extent
+        // Framebuffers
+        // Images
+        // Image views
+            // Per Window Per Frame
         std::vector<VkSemaphore> _imageAvailableSemaphores;
         std::vector<VkSemaphore> _renderFinishedSemaphores;
         std::vector<VkFence> _inFlightFences;
 
+        double _lastTime = 0;
+        int _frameCount = 0;
+        void calculateFPS();
+        
         void createInstance();
         void setupDebugMessenger();
         void createSurfaces();
