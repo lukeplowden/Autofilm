@@ -102,33 +102,30 @@ namespace Autofilm
     {
         int i = 0;
 
-        for (const auto& window : WindowManager::getWindows()) {
-            vkWaitForFences(_device, 1, &_inFlightFences[i], VK_TRUE, UINT64_MAX);
-            vkResetFences(_device, 1, &_inFlightFences[i]);
-            i++;
-        }
-        i = 0;
+        vkWaitForFences(_device, 1, &_inFlightFences[0], VK_TRUE, UINT64_MAX);
+        vkResetFences(_device, 1, &_inFlightFences[0]);
 
-        vkResetCommandBuffer(_commandBuffer, 0);
+        vkResetCommandPool(_device, _commandPool, 0);
+        // vkResetCommandBuffer(_commandBuffer, 0);
 
         std::vector<uint32_t> imageIndices;
         std::vector<VkSwapchainKHR> swapchains;
-
+        
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr; // Optional
         VkResult result = vkBeginCommandBuffer(_commandBuffer, &beginInfo);
         AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to begin recording command buffer!");
         
-
+        float r = 0.0f;
+        float g = 1.0f;
         for (const auto& window : WindowManager::getWindows()) {
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
             auto windowData = vulkanWindow->_data;
             uint32_t imageIndex;
             
             vkAcquireNextImageKHR(_device, vulkanWindow->_data.swapchain, UINT64_MAX, _imageAvailableSemaphores[i], VK_NULL_HANDLE, &imageIndex);
-            
 
             VkRenderPassBeginInfo renderPassInfo{};
             renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -137,7 +134,9 @@ namespace Autofilm
             renderPassInfo.renderArea.offset = { 0, 0 };
             renderPassInfo.renderArea.extent = windowData.swapchainExtent;
 
-            VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+            VkClearValue clearColor = {{{r, g, 1.0f, 1.0f}}};
+            r += 0.25f;
+            g-=0.33f;
             renderPassInfo.clearValueCount = 1;
             renderPassInfo.pClearValues = &clearColor;
             vkCmdBeginRenderPass(_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -168,41 +167,47 @@ namespace Autofilm
         VkResult result2 = vkEndCommandBuffer(_commandBuffer);
         AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
 
-        for (const auto& window : WindowManager::getWindows())
-        {
-            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
-            auto windowData = vulkanWindow->_data;
+        // TODO: This can mostly be defined in init
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = static_cast<uint32_t>(_imageAvailableSemaphores.size());
+        submitInfo.pWaitSemaphores = _imageAvailableSemaphores.data();
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &_commandBuffer;
+        submitInfo.signalSemaphoreCount = _renderFinishedSemaphores.size();
+        submitInfo.pSignalSemaphores = _renderFinishedSemaphores.data();
 
-            VkSubmitInfo submitInfo{};
-            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[0]);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to submit draw command buffer.");
 
-            VkSemaphore waitSemaphores[] = { _imageAvailableSemaphores[i] };
-            VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-            submitInfo.waitSemaphoreCount = 1;
-            submitInfo.pWaitSemaphores = waitSemaphores;
-            submitInfo.pWaitDstStageMask = waitStages;
-            submitInfo.commandBufferCount = 1;
-            submitInfo.pCommandBuffers = &_commandBuffer;
 
-            VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[i]};
-            submitInfo.signalSemaphoreCount = 1;
-            submitInfo.pSignalSemaphores = signalSemaphores;
+        // This can be made on the fly
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(_renderFinishedSemaphores.size());;
+        presentInfo.pWaitSemaphores = _renderFinishedSemaphores.data();
+        presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());;
+        presentInfo.pSwapchains = swapchains.data();
+        presentInfo.pImageIndices = imageIndices.data();
 
-            VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[i]);
-            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to submit draw command buffer.");
+        result = vkQueuePresentKHR(_presentQueue, &presentInfo);
+        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to present swapchain image.");
+        i++;
+        
+        calculateFPS();
+    }
 
-            VkPresentInfoKHR presentInfo{};
-            presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-            presentInfo.waitSemaphoreCount = 1;
-            presentInfo.pWaitSemaphores = signalSemaphores;
-            VkSwapchainKHR swapchains[] = { windowData.swapchain };
-            presentInfo.swapchainCount = 1;
-            presentInfo.pSwapchains = swapchains;
-            presentInfo.pImageIndices = &imageIndices[i];
-
-            result = vkQueuePresentKHR(_presentQueue, &presentInfo);
-            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to present swapchain image.");
-            i++;
+    void VulkanAPI::calculateFPS()
+    {
+        double currentTime = glfwGetTime();
+        _frameCount++;
+        if (currentTime - _lastTime >= 1.0) {
+            double fps = _frameCount / (currentTime - _lastTime);
+            AF_CORE_TRACE("FPS: {0}", fps);
+            _frameCount = 0;
+            _lastTime = currentTime;
         }
     }
 
@@ -689,8 +694,10 @@ namespace Autofilm
             }
         }
         bool extensionsSupported = checkDeviceExtensionsSupport(device);
-
-        bool result = indices.isComplete() && extensionsSupported && swapchainAdequate;
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(device, &deviceProperties);
+        bool isDiscrete = (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
+        bool result = indices.isComplete() && extensionsSupported && swapchainAdequate && isDiscrete;
         return result;
     }
 
