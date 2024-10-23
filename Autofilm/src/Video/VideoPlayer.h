@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gst/gst.h>
+#include "Core/File.h"
 
 int AUTOFILM_API hello_gst()
 {
@@ -10,7 +11,7 @@ int AUTOFILM_API hello_gst()
     gst_init(NULL, NULL);
     
     pipeline = gst_parse_launch(
-        "playbin uri=https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm",
+        "playbin uri=file:///C:/dev/auto-vid/Autofilm/src/Video/example.mp4",
         NULL
     );
 
@@ -28,8 +29,8 @@ int AUTOFILM_API hello_gst()
     // /* See next tutorial for proper error message handling/parsing */
     if (msg != NULL) {
         if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
-            g_printerr("An error occurred! Re-run with the GST_DEBUG=*:WARN "
-                       "environment variable set for more details.\n");
+            AF_CORE_ERROR("An error occurred! Re-run with the GST_DEBUG=*:WARN "
+                       "environment variable set for more details.");
         }
         gst_message_unref(msg);
     }
