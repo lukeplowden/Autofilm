@@ -1,3 +1,11 @@
+/*
+* Basic C++11 based thread pool with per-thread job queues
+*
+* Copyright (C) 2016 by Sascha Willems - www.saschawillems.de
+*
+* This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+*/
+
 #pragma once
 
 #include <vector>
@@ -79,6 +87,21 @@ namespace Autofilm
     class ThreadPool
     {
     public:
+        // Default constructor
+        ThreadPool() = default;
+
+        // Delete copy constructor
+        ThreadPool(const ThreadPool&) = delete;
+
+        // Delete copy assignment operator
+        ThreadPool& operator=(const ThreadPool&) = delete;
+
+        // Default move constructor
+        ThreadPool(ThreadPool&&) noexcept = default;
+
+        // Default move assignment operator
+        ThreadPool& operator=(ThreadPool&&) noexcept = default;
+
         std::vector<std::unique_ptr<Thread>> _threads;
 
         // Sets the number of threads to be allocated in this pool
