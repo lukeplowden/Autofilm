@@ -29,7 +29,7 @@ namespace Autofilm
     void VulkanWindow::createSurface(VkInstance& instance)
     {
         VkResult result = glfwCreateWindowSurface(instance, _window, nullptr, &_data.surface);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a VkSurface.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a VkSurface.");
     }
 
     void VulkanWindow::destroySurface(VkInstance& instance)
@@ -40,7 +40,7 @@ namespace Autofilm
     void VulkanWindow::createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat, VkExtent2D extent)
     {
         VkResult result = vkCreateSwapchainKHR(device, &createInfo, nullptr, &_data.swapchain);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a Vulkan Swapchain.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a Vulkan Swapchain.");
         vkGetSwapchainImagesKHR(device, _data.swapchain, &imageCount, nullptr);
         _data.swapchainImages.resize(imageCount);
         vkGetSwapchainImagesKHR(device, _data.swapchain, &imageCount, _data.swapchainImages.data());
@@ -69,7 +69,7 @@ namespace Autofilm
             createInfo.subresourceRange.baseArrayLayer = 0;
             createInfo.subresourceRange.layerCount = 1;
             VkResult result = vkCreateImageView(device, &createInfo, nullptr, &_data.swapchainImageViews[i]);
-            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create an image view");
+            AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create an image view");
         }
     }
 
@@ -92,7 +92,7 @@ namespace Autofilm
             framebufferInfo.layers = 1;
             
             VkResult result = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &_data.swapchainFramebuffers[i]);
-            AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a framebuffer.");       
+            AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a framebuffer.");       
         }
     }
 
