@@ -12,7 +12,11 @@ namespace Autofilm
         createSurfaces();
         pickPhysicalDevice();
         createLogicalDevice();
+
+        _maxNumThreads = std::thread::hardware_concurrency();
+        AF_CORE_ASSERT(_maxNumThreads > 0, "No threads are available");   
         createSwapchains();
+        
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
@@ -115,8 +119,9 @@ namespace Autofilm
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr; // Optional
+        
         VkResult result = vkBeginCommandBuffer(_commandBuffer, &beginInfo);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to begin recording command buffer!");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to begin recording command buffer!");
         
         float r = 0.0f;
         float g = 1.0f;
@@ -165,7 +170,7 @@ namespace Autofilm
         }
         i = 0;
         VkResult result2 = vkEndCommandBuffer(_commandBuffer);
-        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to record command buffer!");
 
         // TODO: This can mostly be defined in init
         VkSubmitInfo submitInfo{};
@@ -180,7 +185,7 @@ namespace Autofilm
         submitInfo.pSignalSemaphores = _renderFinishedSemaphores.data();
 
         result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[0]);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to submit draw command buffer.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to submit draw command buffer.");
 
 
         // This can be made on the fly
@@ -193,7 +198,7 @@ namespace Autofilm
         presentInfo.pImageIndices = imageIndices.data();
 
         result = vkQueuePresentKHR(_presentQueue, &presentInfo);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to present swapchain image.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to present swapchain image.");
         i++;
         
         calculateFPS();
@@ -218,7 +223,7 @@ namespace Autofilm
         beginInfo.flags = 0; // Optional
         beginInfo.pInheritanceInfo = nullptr; // Optional
         VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to begin recording command buffer!");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to begin recording command buffer!");
 
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -250,7 +255,7 @@ namespace Autofilm
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
         vkCmdEndRenderPass(commandBuffer);
         VkResult result2 = vkEndCommandBuffer(commandBuffer);
-        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to record command buffer!");
+        AF_VK_ASSERT(result2 == VK_SUCCESS, "Failed to record command buffer!");
     }
 
     void VulkanAPI::createInstance()
@@ -287,7 +292,7 @@ namespace Autofilm
         }
         
         VkResult result = vkCreateInstance(&createInfo, nullptr, &_instance);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create Vulkan instance.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create Vulkan instance.");
     }
 
     void VulkanAPI::createSurfaces()
@@ -325,7 +330,7 @@ namespace Autofilm
             }
         }
 
-        AF_VK_ASSERT_NOT_EQUAL(_physicalDevice, VK_NULL_HANDLE, "Failed to find a suitable GPU");
+        AF_VK_ASSERT(_physicalDevice != VK_NULL_HANDLE, "Failed to find a suitable GPU");
     }
 
     void VulkanAPI::createLogicalDevice()
@@ -368,7 +373,7 @@ namespace Autofilm
         }
 
         VkResult result = vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a logical device.")
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a logical device.")
 
         vkGetDeviceQueue(_device, indices.graphicsAndComputeFamily.value(), 0, &_graphicsQueue);
         vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
@@ -465,7 +470,7 @@ namespace Autofilm
         renderPassInfo.pDependencies = &dependency;
 
         VkResult result = vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a render pass.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a render pass.");
     }
 
     void VulkanAPI::createGraphicsPipeline()
@@ -582,7 +587,7 @@ namespace Autofilm
         pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
         pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
         VkResult result = vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr, &_pipelineLayout);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create the pipeline layout.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create the pipeline layout.");
 
         // Bringing it all together
         VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -604,7 +609,7 @@ namespace Autofilm
         pipelineInfo.basePipelineIndex = -1; // Optional
 
         VkResult result2 = vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline);
-        AF_VK_ASSERT_EQUAL(result2, VK_SUCCESS, "Failed to create a graphics pipeline.");
+        AF_VK_ASSERT(result2 == VK_SUCCESS, "Failed to create a graphics pipeline.");
         vkDestroyShaderModule(_device, fragShaderModule, nullptr);
         vkDestroyShaderModule(_device, vertShaderModule, nullptr);
     }
@@ -627,7 +632,7 @@ namespace Autofilm
         poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
         VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a command pool.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
     }
 
     void VulkanAPI::createCommandBuffer()
@@ -639,7 +644,7 @@ namespace Autofilm
         allocInfo.commandBufferCount = 1;
         
         VkResult result = vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffer);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create a command pool.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
     }
 
     void VulkanAPI::createSyncObjects()
@@ -656,15 +661,15 @@ namespace Autofilm
         VkFence inFlightFence;
 
         VkResult result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
         _imageAvailableSemaphores.push_back(imageAvailableSemaphore);
 
         result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &renderFinishedSemaphore);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
         _renderFinishedSemaphores.push_back(renderFinishedSemaphore);
 
         result = vkCreateFence(_device, &fenceInfo, nullptr, &inFlightFence);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create semaphores.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
         _inFlightFences.push_back(inFlightFence);
     }
 
@@ -676,7 +681,7 @@ namespace Autofilm
         createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
         VkShaderModule shaderModule;
         VkResult result = vkCreateShaderModule(_device, &createInfo, nullptr, &shaderModule);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Shader module failed");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Shader module failed");
         return shaderModule;
     }
 
@@ -865,7 +870,7 @@ namespace Autofilm
         VkDebugUtilsMessengerCreateInfoEXT createInfo;
         populateDebugMessengerCreateInfo(createInfo);
         VkResult result = CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger);
-        AF_VK_ASSERT_EQUAL(result, VK_SUCCESS, "Failed to create the debug messenger.");
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create the debug messenger.");
     }
      
     VKAPI_ATTR VkBool32 VKAPI_CALL VulkanAPI::debugCallback(
