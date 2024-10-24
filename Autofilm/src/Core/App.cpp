@@ -18,10 +18,10 @@ namespace Autofilm
 
     void App::Run()
     {
-        std::thread t { hello_gst };
-        std::thread tt { hello_gst };
-        std::thread ttt { hello_gst };
-        std::thread tttt { hello_gst };
+        // std::thread t { hello_gst };
+        // std::thread tt { hello_gst };
+        // std::thread ttt { hello_gst };
+        // std::thread tttt { hello_gst };
         // hello_gst();
         while (m_running)
         {
