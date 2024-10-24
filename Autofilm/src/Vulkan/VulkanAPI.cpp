@@ -12,33 +12,204 @@ namespace Autofilm
         createSurfaces();
         pickPhysicalDevice();
         createLogicalDevice();
-
-        _maxNumThreads = std::thread::hardware_concurrency();
-        AF_CORE_ASSERT(_maxNumThreads > 0, "No threads are available");   
         createSwapchains();
-        
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
         createCommandBuffer();
-        for (auto& window : WindowManager::getWindows())
-        {
-            createSyncObjects();
-        }
+        // createSemaphores();
+        createRenderFence();
+        prepareThreads();
     }
 
     void VulkanAPI::shutdown()
     {
         vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
-        vkDestroyFence(_device, _inFlightFence, nullptr);
-        vkDestroyCommandPool(_device, _commandPool, nullptr);
+        vkDestroyFence(_device, _renderFence, nullptr);
+        vkDestroyCommandPool(_device, _mainCommandPool, nullptr);
         vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
         vkDestroyRenderPass(_device, _renderPass, nullptr);
         vkDestroyDevice(_device, nullptr);
         vkDestroyInstance(_instance, nullptr);
+    }
+
+    void VulkanAPI::prepareThreads()
+    {
+        _maxNumThreads = std::thread::hardware_concurrency();
+        AF_CORE_ASSERT(_maxNumThreads > 0, "No threads are available");
+
+        auto& windows = WindowManager::getWindows();
+        int numWindows = windows.size();
+        _threadPool.setThreadCount(numWindows);
+        _threadData.resize(numWindows);
+        _numThreads = numWindows;
+        if (_numThreads > _maxNumThreads) {
+            AF_CORE_WARN("More windows are open than threads available. Performance may be impacted.");
+        }
+
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(_physicalDevice);
+
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+        
+        for (int i = 0; i < _numThreads; i++) {
+            ThreadData* thread = &_threadData[i];
+            
+            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(windows[i].get());
+
+            thread->windowData = &vulkanWindow->_data;
+            for (int j = 0; j < FRAMES_IN_FLIGHT; j++) {
+                VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &thread->commandPools[j]);
+                AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
+                
+                allocInfo.commandPool = thread->commandPools[j];
+
+                result = vkAllocateCommandBuffers(_device, &allocInfo, &thread->commandBuffers[j]);
+                AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
+
+                vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &thread->renderSemaphores[j]);
+                vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &thread->frameSemaphores[j]);
+            }
+        }
+    }
+
+    void VulkanAPI::threadRenderCode(const ThreadData* thread, int currentFrame, uint32_t imageIndex)
+    {
+        const VulkanWindow::WindowData* windowData = thread->windowData;
+        AF_CORE_ASSERT(windowData, "Could not acess the window data on a separate thread!");
+
+        vkResetCommandPool(_device, thread->commandPools[currentFrame], 0);
+                
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0;
+        beginInfo.pInheritanceInfo = nullptr;
+
+        VkResult result = vkBeginCommandBuffer(thread->commandBuffers[currentFrame], &beginInfo);
+        
+
+        VkRenderPassBeginInfo renderPassBeginInfo{};
+        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassBeginInfo.renderPass = _renderPass;
+        renderPassBeginInfo.framebuffer = windowData->swapchainFramebuffers[imageIndex];
+        renderPassBeginInfo.renderArea.offset = { 0, 0 };
+        renderPassBeginInfo.renderArea.extent = windowData->swapchainExtent;
+
+        VkClearValue clearColor = {{{1.0f, 1.0f, 1.0f, 1.0f}}};
+        renderPassBeginInfo.clearValueCount = 1;
+        renderPassBeginInfo.pClearValues = &clearColor;
+        
+        vkCmdBeginRenderPass(thread->commandBuffers[currentFrame], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(thread->commandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
+        
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(windowData->swapchainExtent.width);
+        viewport.height = static_cast<float>(windowData->swapchainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(thread->commandBuffers[currentFrame], 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = windowData->swapchainExtent;
+        vkCmdSetScissor(thread->commandBuffers[currentFrame], 0, 1, &scissor);
+
+        vkCmdDraw(thread->commandBuffers[currentFrame], 3, 1, 0, 0);
+        vkCmdEndRenderPass(thread->commandBuffers[currentFrame]);
+        result = vkEndCommandBuffer(thread->commandBuffers[currentFrame]);
+    }
+
+    void VulkanAPI::drawFrame()
+    {
+        vkWaitForFences(_device, 1, &_renderFence, VK_TRUE, UINT64_MAX);
+        vkResetFences(_device, 1, &_renderFence);
+
+        std::vector<uint32_t> imageIndices;
+        imageIndices.resize(_numThreads);
+
+        std::vector<VkSwapchainKHR> swapchains;
+        swapchains.resize(_numThreads);
+
+        std::vector<VkSemaphore> frameSemaphores;
+        frameSemaphores.resize(_numThreads);
+
+        std::vector<VkSemaphore> renderSemaphores;
+        renderSemaphores.resize(_numThreads);
+
+        std::vector<VkCommandBuffer> commandBuffers;
+        commandBuffers.resize(_numThreads);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0;
+        beginInfo.pInheritanceInfo = nullptr;
+
+        // VkResult result = vkBeginCommandBuffer(_mainCommandBuffer, &beginInfo);
+
+        for (uint32_t t = 0; t < _numThreads; t++) {
+            ThreadData* thread = &_threadData[t];
+            uint32_t imageIndex;
+            
+            vkAcquireNextImageKHR(_device, thread->windowData->swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+            
+            _threadPool._threads[t]->addJob([=] { threadRenderCode(thread, _currentFrame, imageIndex); });
+            
+            imageIndices[t] = imageIndex;
+            swapchains[t] = thread->windowData->swapchain;
+            frameSemaphores[t] = thread->frameSemaphores[_currentFrame];
+            renderSemaphores[t] = thread->renderSemaphores[_currentFrame];
+            commandBuffers[t] = thread->commandBuffers[_currentFrame];
+        }
+
+        _threadPool.wait();
+        printFPS();
+
+        // TODO: This can mostly be defined in init
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
+                                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
+                                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = static_cast<uint32_t>(frameSemaphores.size());
+        submitInfo.pWaitSemaphores = frameSemaphores.data();
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+        submitInfo.pCommandBuffers = commandBuffers.data();
+        submitInfo.signalSemaphoreCount = static_cast<uint32_t>(renderSemaphores.size());
+        submitInfo.pSignalSemaphores = renderSemaphores.data();
+
+        VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _renderFence);
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to submit draw command buffer.");
+
+        // This can be made on the fly
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(_renderFinishedSemaphores.size());;
+        presentInfo.pWaitSemaphores = renderSemaphores.data();
+        presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());;
+        presentInfo.pSwapchains = swapchains.data();
+        presentInfo.pImageIndices = imageIndices.data();
+
+        result = vkQueuePresentKHR(_presentQueue, &presentInfo);
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to present swapchain image.");
+
+        _currentFrame = (_currentFrame + 1) % FRAMES_IN_FLIGHT;
     }
 
     void VulkanAPI::clearColor(const glm::vec4& color)
@@ -74,43 +245,8 @@ namespace Autofilm
             Set number of 
             Submit render
             Submit present
-    */
 
-    void draw()
-    {
-        // Function: update scene 
-        // convert scene objects data to renderer data
-        // Bind buffers
-        
-        // Wait for fences and reset everything
-
-        // Function Draw geometry:
-        // Begin command buffer
-        // For each Scene
-            // Begin renderpass
-            // Set viewport & scissors
-            // For each Camera
-                // If Camera is active
-                    // Set viewport and scissor
-                    // For each IRenderable in the Scene
-                        // VkDraw command
-            // End renderpass
-        // End command buffer
-
-        // For each Frame
-            // Submit each render command to queue
-            // Submit each present command to queue
-    }
-
-    void VulkanAPI::drawFrame()
-    {
-        int i = 0;
-
-        vkWaitForFences(_device, 1, &_inFlightFences[0], VK_TRUE, UINT64_MAX);
-        vkResetFences(_device, 1, &_inFlightFences[0]);
-
-        vkResetCommandPool(_device, _commandPool, 0);
-        // vkResetCommandBuffer(_commandBuffer, 0);
+                    // vkResetCommandBuffer(_mainCommandBuffer, 0);
 
         std::vector<uint32_t> imageIndices;
         std::vector<VkSwapchainKHR> swapchains;
@@ -120,7 +256,7 @@ namespace Autofilm
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr; // Optional
         
-        VkResult result = vkBeginCommandBuffer(_commandBuffer, &beginInfo);
+        VkResult result = vkBeginCommandBuffer(_mainCommandBuffer, &beginInfo);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to begin recording command buffer!");
         
         float r = 0.0f;
@@ -144,9 +280,9 @@ namespace Autofilm
             g-=0.33f;
             renderPassInfo.clearValueCount = 1;
             renderPassInfo.pClearValues = &clearColor;
-            vkCmdBeginRenderPass(_commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBeginRenderPass(_mainCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-            vkCmdBindPipeline(_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
+            vkCmdBindPipeline(_mainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
             VkViewport viewport{};
             viewport.x = 0.0f;
             viewport.y = 0.0f;
@@ -154,57 +290,28 @@ namespace Autofilm
             viewport.height = static_cast<float>(windowData.swapchainExtent.height);
             viewport.minDepth = 0.0f;
             viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(_commandBuffer, 0, 1, &viewport);
+            vkCmdSetViewport(_mainCommandBuffer, 0, 1, &viewport);
 
             VkRect2D scissor{};
             scissor.offset = {0, 0};
             scissor.extent = windowData.swapchainExtent;
-            vkCmdSetScissor(_commandBuffer, 0, 1, &scissor);
+            vkCmdSetScissor(_mainCommandBuffer, 0, 1, &scissor);
 
-            vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
-            vkCmdEndRenderPass(_commandBuffer);
+            vkCmdDraw(_mainCommandBuffer, 3, 1, 0, 0);
+            vkCmdEndRenderPass(_mainCommandBuffer);
 
             imageIndices.push_back(imageIndex);
             swapchains.push_back(vulkanWindow->_data.swapchain);
             i++;
         }
         i = 0;
-        VkResult result2 = vkEndCommandBuffer(_commandBuffer);
+        VkResult result2 = vkEndCommandBuffer(_mainCommandBuffer);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to record command buffer!");
 
-        // TODO: This can mostly be defined in init
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        submitInfo.waitSemaphoreCount = static_cast<uint32_t>(_imageAvailableSemaphores.size());
-        submitInfo.pWaitSemaphores = _imageAvailableSemaphores.data();
-        submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &_commandBuffer;
-        submitInfo.signalSemaphoreCount = _renderFinishedSemaphores.size();
-        submitInfo.pSignalSemaphores = _renderFinishedSemaphores.data();
 
-        result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[0]);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to submit draw command buffer.");
+    */
 
-
-        // This can be made on the fly
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(_renderFinishedSemaphores.size());;
-        presentInfo.pWaitSemaphores = _renderFinishedSemaphores.data();
-        presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());;
-        presentInfo.pSwapchains = swapchains.data();
-        presentInfo.pImageIndices = imageIndices.data();
-
-        result = vkQueuePresentKHR(_presentQueue, &presentInfo);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to present swapchain image.");
-        i++;
-        
-        calculateFPS();
-    }
-
-    void VulkanAPI::calculateFPS()
+    void VulkanAPI::printFPS()
     {
         double currentTime = glfwGetTime();
         _frameCount++;
@@ -514,20 +621,6 @@ namespace Autofilm
         dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
         dynamicState.pDynamicStates = dynamicStates.data();
 
-        // VulkanWindow* wnd = dynamic_cast<VulkanWindow*>(WindowManager::getWindows()[0].get());
-        // VkViewport viewport{};
-        // auto swapchainExtent = wnd->_data.swapchainExtent;
-        // viewport.x = 0.0f;
-        // viewport.y = 0.0f;
-        // viewport.width = (float) swapchainExtent.width;
-        // viewport.height = (float) swapchainExtent.height;
-        // viewport.minDepth = 0.0f;
-        // viewport.maxDepth = 1.0f;
-
-        // VkRect2D scissor{};
-        // scissor.offset = {0, 0};
-        // scissor.extent = swapchainExtent;
-
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewportState.viewportCount = 1; //WindowManager::getWindows().size();
@@ -631,7 +724,7 @@ namespace Autofilm
         poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
-        VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool);
+        VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &_mainCommandPool);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
     }
 
@@ -639,26 +732,31 @@ namespace Autofilm
     {
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = _commandPool;
+        allocInfo.commandPool = _mainCommandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = 1;
         
-        VkResult result = vkAllocateCommandBuffers(_device, &allocInfo, &_commandBuffer);
+        VkResult result = vkAllocateCommandBuffers(_device, &allocInfo, &_mainCommandBuffer);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
     }
 
-    void VulkanAPI::createSyncObjects()
+    void VulkanAPI::createRenderFence()
     {
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+        VkResult result = vkCreateFence(_device, &fenceInfo, nullptr, &_renderFence);
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
+    }
+
+    void VulkanAPI::createSemaphores()
+    {
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
         VkSemaphore imageAvailableSemaphore;
         VkSemaphore renderFinishedSemaphore;
-        VkFence inFlightFence;
 
         VkResult result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
@@ -667,10 +765,6 @@ namespace Autofilm
         result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &renderFinishedSemaphore);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
         _renderFinishedSemaphores.push_back(renderFinishedSemaphore);
-
-        result = vkCreateFence(_device, &fenceInfo, nullptr, &inFlightFence);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
-        _inFlightFences.push_back(inFlightFence);
     }
 
     VkShaderModule VulkanAPI::createShaderModule(const std::vector<char>& code) 

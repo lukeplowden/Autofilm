@@ -26,32 +26,20 @@ namespace Autofilm
         VkRenderPass _renderPass;
         VkPipelineLayout _pipelineLayout;
         VkPipeline _graphicsPipeline;
-        VkCommandPool _commandPool;
-        VkCommandBuffer _commandBuffer;
+        VkCommandPool _mainCommandPool;
+        VkCommandBuffer _mainCommandBuffer;
         VkSemaphore _imageAvailableSemaphore;
         VkSemaphore _renderFinishedSemaphore;
-        VkFence _inFlightFence;
-
-        // Some kind of thread management required
-
-        // Per window resources
-        // Window ID
-        // Surface
-        // swapchain
-        // swapchain images
-        // swapchain extent
-        // Framebuffers
-        // Images
-        // Image views
-            // Per Window Per Frame
+        VkFence _renderFence;
         std::vector<VkSemaphore> _imageAvailableSemaphores;
         std::vector<VkSemaphore> _renderFinishedSemaphores;
-        std::vector<VkFence> _inFlightFences;
 
-        double _lastTime = 0;
-        int _frameCount = 0;
-        void calculateFPS();
-        
+        double _lastTime { 0 };
+        int _frameCount { 0 };
+        void printFPS();
+        const static int FRAMES_IN_FLIGHT { 2 };
+        int _currentFrame { 0 };
+
         void createInstance();
         void setupDebugMessenger();
         void createSurfaces();
@@ -65,7 +53,8 @@ namespace Autofilm
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffer();
-        void createSyncObjects();
+        void createSemaphores();
+        void createRenderFence();
         void drawFrame() override;
 
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData);
@@ -103,19 +92,22 @@ namespace Autofilm
         VkShaderModule createShaderModule(const std::vector<char>& code);
         
         // Multi threading stuff
-        uint32_t _maxNumThreads;
+        uint32_t _numThreads { 0 };
+        uint32_t _maxNumThreads { 0 };
         struct ThreadData {
-            std::array<VkCommandPool, 2> commandPools;
-            std::array<VkCommandBuffer, 2> VkCommandBuffer;
-            std::vector<VkSemaphore> renderSemaphores;
-            std::vector<VkSemaphore> frameSemaphores;
+            std::array<VkCommandPool, FRAMES_IN_FLIGHT> commandPools;
+            std::array<VkCommandBuffer, FRAMES_IN_FLIGHT> commandBuffers;
+            std::array<VkSemaphore, FRAMES_IN_FLIGHT> renderSemaphores;
+            std::array<VkSemaphore, FRAMES_IN_FLIGHT> frameSemaphores;
             VulkanWindow::WindowData* windowData;
         };
         std::vector<ThreadData> _threadData;
         ThreadPool _threadPool;
+        void prepareThreads();
+        void threadRenderCode(const ThreadData* thread, int currentFrame, uint32_t imageIndex);
 
         // Validation Layers
-        bool _enableValidationLayers = true;
+        bool _enableValidationLayers = false;
         VkDebugUtilsMessengerEXT _debugMessenger;
         const std::vector<const char*> _validationLayers = {
             "VK_LAYER_KHRONOS_validation"
