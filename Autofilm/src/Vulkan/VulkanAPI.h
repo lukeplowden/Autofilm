@@ -4,6 +4,7 @@
 
 #include "Renderer/RenderAPI.h"
 #include "Vulkan/VulkanWindow.h"
+#include "Core/ThreadPool.h"
 
 namespace Autofilm
 {
@@ -68,7 +69,6 @@ namespace Autofilm
         void drawFrame() override;
 
         void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData);
-
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
             std::optional<uint32_t> computeFamily;
@@ -102,6 +102,18 @@ namespace Autofilm
         // Shader modules
         VkShaderModule createShaderModule(const std::vector<char>& code);
         
+        // Multi threading stuff
+        uint32_t _maxNumThreads;
+        struct ThreadData {
+            std::array<VkCommandPool, 2> commandPools;
+            std::array<VkCommandBuffer, 2> VkCommandBuffer;
+            std::vector<VkSemaphore> renderSemaphores;
+            std::vector<VkSemaphore> frameSemaphores;
+            VulkanWindow::WindowData* windowData;
+        };
+        std::vector<ThreadData> _threadData;
+        ThreadPool _threadPool;
+
         // Validation Layers
         bool _enableValidationLayers = true;
         VkDebugUtilsMessengerEXT _debugMessenger;
