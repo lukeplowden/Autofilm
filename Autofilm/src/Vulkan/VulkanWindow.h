@@ -54,6 +54,9 @@ namespace Autofilm
         void createImageViews(VkDevice& device);
         // Framebuffers
         void createFramebuffers(VkDevice& device, VkRenderPass& renderPass);
+        // Semaphores
+        //Command Buffers
+        //Command Pools
 
     private: 
         virtual void init(const WindowProperties& props);
