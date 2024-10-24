@@ -480,7 +480,7 @@ namespace Autofilm
         }
 
         VkResult result = vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a logical device.")
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a logical device.");
 
         vkGetDeviceQueue(_device, indices.graphicsAndComputeFamily.value(), 0, &_graphicsQueue);
         vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
