@@ -33,6 +33,68 @@ namespace Autofilm
             WindowCloseEvent event(data.ID);
             data.eventCallback(event);
         });
+
+        glfwSetWindowSizeCallback(_window, [](GLFWwindow* window, int width, int height)
+        {
+            WindowData data = *(WindowData*)glfwGetWindowUserPointer(window);
+            data.width = width;
+            data.height = height;
+            WindowResizeEvent event(width, height, data.ID);
+            data.eventCallback(event);
+        });
+
+        glfwSetKeyCallback(_window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
+        {
+            WindowData data = *(WindowData*)glfwGetWindowUserPointer(window);
+            switch (action)
+            {
+                case GLFW_REPEAT:
+                {
+                    KeyPressedEvent event(key, true, data.ID);
+                    data.eventCallback(event);
+                    break;
+                }
+                case GLFW_PRESS:
+                {
+                    KeyPressedEvent event(key, false, data.ID);
+                    data.eventCallback(event);
+                    break;
+                }
+                case GLFW_RELEASE:
+                {
+                    KeyReleasedEvent event(key, data.ID);
+                    data.eventCallback(event);
+                    break;
+                }
+            }
+        });
+
+        glfwSetMouseButtonCallback(_window, [](GLFWwindow* window, int button, int action, int mods)
+        {
+            WindowData data = *(WindowData*)glfwGetWindowUserPointer(window);
+            switch (action)
+            {
+                case GLFW_PRESS:
+                {
+                MouseButtonPressedEvent event(button, data.ID);
+                data.eventCallback(event);
+                break;
+                }
+                case GLFW_RELEASE:
+                {
+                MouseButtonReleasedEvent event(button, data.ID);
+                data.eventCallback(event);
+                break;
+                }
+            }
+        });
+
+        glfwSetCursorPosCallback(_window, [](GLFWwindow* window, double xpos, double ypos)
+        {
+            WindowData data = *(WindowData*)glfwGetWindowUserPointer(window);
+            MouseMovedEvent event(xpos, ypos, data.ID);
+            data.eventCallback(event);
+        });
     }
 
     void VulkanWindow::createSurface(VkInstance& instance)

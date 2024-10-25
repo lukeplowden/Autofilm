@@ -119,7 +119,7 @@ namespace Autofilm
         renderPassBeginInfo.renderArea.offset = { 0, 0 };
         renderPassBeginInfo.renderArea.extent = windowData->swapchainExtent;
 
-        VkClearValue clearColor = {{{1.0f, 1.0f, 1.0f, 1.0f}}};
+        VkClearValue clearColor = {{{0.0f, 0.4f, 0.3f, 1.0f}}};
         renderPassBeginInfo.clearValueCount = 1;
         renderPassBeginInfo.pClearValues = &clearColor;
         

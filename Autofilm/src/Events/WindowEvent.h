@@ -9,8 +9,8 @@ namespace Autofilm
 	class WindowResizeEvent : public Event
 	{
 	public:
-		WindowResizeEvent(unsigned int width, unsigned int height)
-			: _width(width), _height(height) {}
+		WindowResizeEvent(unsigned int width, unsigned int height, unsigned int ID)
+			: _width(width), _height(height), _ID(ID) {}
 
 		unsigned int GetWidth() const { return _width; }
 		unsigned int GetHeight() const { return _height; }
@@ -18,7 +18,7 @@ namespace Autofilm
 		std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "WindowResizeEvent: " << _width << ", " << _height;
+			ss << "WindowResizeEvent: " << _width << ", " << _height  << " on Window " << _ID;
 			return ss.str();
 		}
 
@@ -26,18 +26,19 @@ namespace Autofilm
 		EVENT_CLASS_CATEGORY(EventCategoryApplication)
 	private:
 		unsigned int _width, _height;
+		unsigned int _ID;
 	};
 
 	class WindowCloseEvent : public Event
 	{
 	public:
-		WindowCloseEvent(unsigned int ID)
+		WindowCloseEvent(const unsigned int ID)
             : _ID(ID) {}
 
         std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "WindowCloseEvent: " << _ID;
+			ss << "WindowCloseEvent: " << " on Window " << _ID;
 			return ss.str();
 		}
 

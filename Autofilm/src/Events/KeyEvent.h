@@ -15,24 +15,25 @@ namespace Autofilm
 
 		EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
 	protected:
-		KeyEvent(const int keycode)
-			: _keyCode(keycode) {}
+		KeyEvent(const int keycode, unsigned int ID)
+			: _keyCode(keycode), _ID(ID) {}
 
 		int _keyCode;
+		unsigned int _ID;
 	};
 
 	class KeyPressedEvent : public KeyEvent
 	{
 	public:
-		KeyPressedEvent(const int keycode, bool isRepeat = false)
-			: KeyEvent(keycode), _IsRepeat(isRepeat) {}
+		KeyPressedEvent(const int keycode, bool isRepeat, unsigned int ID)
+			: KeyEvent(keycode, ID), _IsRepeat(isRepeat) {}
 
 		bool isRepeat() const { return _IsRepeat; }
 
 		std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "KeyPressedEvent: " << _keyCode << " (repeat = " << _IsRepeat << ")";
+			ss << "KeyPressedEvent: " << _keyCode << " (repeat = " << _IsRepeat << ")" << " on Window " << _ID;
 			return ss.str();
 		}
 
@@ -44,13 +45,13 @@ namespace Autofilm
 	class KeyReleasedEvent : public KeyEvent
 	{
 	public:
-		KeyReleasedEvent(const int keycode)
-			: KeyEvent(keycode) {}
+		KeyReleasedEvent(const int keycode, unsigned int ID)
+			: KeyEvent(keycode, ID) {}
 
 		std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "KeyReleasedEvent: " << _keyCode;
+			ss << "KeyReleasedEvent: " << _keyCode << " on Window " << _ID;
 			return ss.str();
 		}
 
@@ -60,13 +61,13 @@ namespace Autofilm
 	class KeyTypedEvent : public KeyEvent
 	{
 	public:
-		KeyTypedEvent(const int keycode)
-			: KeyEvent(keycode) {}
+		KeyTypedEvent(const int keycode, unsigned int ID)
+			: KeyEvent(keycode, ID) {}
 
 		std::string toString() const override
 		{
 			std::stringstream ss;
-			ss << "KeyTypedEvent: " << _keyCode;
+			ss << "KeyTypedEvent: " << _keyCode << " on Window " << _ID;
 			return ss.str();
 		}
 
