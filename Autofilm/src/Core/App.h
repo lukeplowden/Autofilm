@@ -12,14 +12,14 @@ namespace Autofilm
     {
         std::string title;
         RenderAPIType renderer;
-        bool multiChannel;
+        int numWindows;
 
         ProjectSettings(
                     const std::string& title = "Autofilm", 
-                    bool multiChannel = true,
+                    int numWindows = 4,
                     RenderAPIType renderer = RenderAPIType::Vulkan
                 )
-            : title(title), multiChannel(multiChannel), renderer(renderer)
+            : title(title), numWindows(numWindows), renderer(renderer)
         {}
     };
 
@@ -39,7 +39,6 @@ namespace Autofilm
         App& operator=(const App&) = delete;
         bool m_running = true;
         std::vector<std::unique_ptr<Window>> _windows;
-
     };
 
     App* CreateApp();

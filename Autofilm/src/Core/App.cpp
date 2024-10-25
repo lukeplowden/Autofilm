@@ -9,6 +9,16 @@ namespace Autofilm
     App::App(const ProjectSettings& settings)
     {
         _settings = settings;
+
+        Log::Init();
+	    AF_CORE_INFO("Initialised Log!");
+	    AF_INFO("Initialised Log!");
+
+        WindowManager::Init(_settings.renderer);
+        for (int i = 0; i < _settings.numWindows; i++) {
+	        WindowManager::createWindow();
+        }
+        Renderer::init(_settings.renderer);
     }
 
     App::~App()

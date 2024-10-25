@@ -36,6 +36,7 @@ namespace Autofilm
         } else {
             AF_CORE_ERROR("No valid renderer type initialized.");
         }
+        // _windows.back().get()->setEventCallback(AF_BIND_EVENT_FN(App::onEvent));
     }
 
     const std::vector<std::unique_ptr<Window>>& WindowManager::getWindows()

@@ -20,7 +20,6 @@ void emptyExample::setup()
 Autofilm::App* Autofilm::CreateApp()
 {
     ProjectSettings settings;
-    settings.renderer = RenderAPIType::Vulkan;
     return new emptyExample(settings);
 }  
 
