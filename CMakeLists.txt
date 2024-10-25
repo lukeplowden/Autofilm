@@ -55,6 +55,9 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/Core/Window.h
     ${AUTOFILM_SRC}/Core/WindowManager.cpp
     ${AUTOFILM_SRC}/Events/Event.h
+    ${AUTOFILM_SRC}/Events/KeyEvent.h
+    ${AUTOFILM_SRC}/Events/MouseEvent.h
+    ${AUTOFILM_SRC}/Events/WindowEvent.h
     ${AUTOFILM_SRC}/Core/ThreadPool.h
     ${AUTOFILM_SRC}/Vulkan/VulkanAPI.cpp
     ${AUTOFILM_SRC}/Vulkan/VulkanAPI.h

@@ -4,6 +4,7 @@
 #include "Core/Core.h"
 #include "Core/Window.h"
 #include <string>
+#include "Events/Event.h"
 
 namespace Autofilm
 {
@@ -18,6 +19,8 @@ namespace Autofilm
             unsigned int width, height;
             bool VSync;
             bool fullscreen;
+            unsigned int ID;
+
             VkSurfaceKHR surface;
             VkSwapchainKHR swapchain;
             std::vector<VkImage> swapchainImages;
@@ -25,18 +28,22 @@ namespace Autofilm
             VkExtent2D swapchainExtent;
             std::vector<VkImageView> swapchainImageViews;
             std::vector<VkFramebuffer> swapchainFramebuffers;
+
+            EventCallbackFn eventCallback;
         };
 
     public:
         WindowData getData() { return _data; }
 
-        VulkanWindow(const WindowProperties& props);
+        VulkanWindow(const WindowProperties& props, unsigned int ID);
         virtual ~VulkanWindow();
 
         void onUpdate() override;
 
         inline unsigned int getWidth() const override { return _data.width; };
         inline unsigned int getHeight() const override { return _data.height; };
+
+        void setEventCallback(const EventCallbackFn& callback) override { _data.eventCallback = callback; }
 
         // Window Attributes
         void setFullscreen(bool fullscreen) override;
@@ -54,12 +61,9 @@ namespace Autofilm
         void createImageViews(VkDevice& device);
         // Framebuffers
         void createFramebuffers(VkDevice& device, VkRenderPass& renderPass);
-        // Semaphores
-        //Command Buffers
-        //Command Pools
 
     private: 
-        virtual void init(const WindowProperties& props);
+        virtual void init(const WindowProperties& props, unsigned int ID);
         virtual void shutdown();
         GLFWwindow* _window;
         WindowData _data;

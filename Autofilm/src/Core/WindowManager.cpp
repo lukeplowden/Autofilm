@@ -8,15 +8,16 @@ namespace Autofilm
 {
     std::vector<std::unique_ptr<Window>> WindowManager::_windows;
     RenderAPIType WindowManager::_type = RenderAPIType::None;
-    std::function<std::unique_ptr<Window>(const WindowProperties&)> WindowManager::_createWindowFunc;
+    std::function<std::unique_ptr<Window>(const WindowProperties&, unsigned int ID)> WindowManager::_createWindowFunc;
+    unsigned int WindowManager::nextID = 0;
     
     void WindowManager::Init(RenderAPIType type)
     {
         _type = type;
         switch (_type) {
             case RenderAPIType::Vulkan:
-                _createWindowFunc = [](const WindowProperties& props) {
-                    return std::make_unique<VulkanWindow>(props);
+                _createWindowFunc = [](const WindowProperties& props, unsigned int ID) {
+                    return std::make_unique<VulkanWindow>(props, ID);
                 };
                 break;
             default:
@@ -24,13 +25,14 @@ namespace Autofilm
                 _createWindowFunc = nullptr;
                 break;
         }
+        nextID = 0;
     }
 
     // I should change this to have less heap allocations ...
     void WindowManager::createWindow(const WindowProperties&  props)
     {
         if (_createWindowFunc) {
-            _windows.push_back(_createWindowFunc(props));
+            _windows.push_back(_createWindowFunc(props, nextID++));
         } else {
             AF_CORE_ERROR("No valid renderer type initialized.");
         }
@@ -39,5 +41,11 @@ namespace Autofilm
     const std::vector<std::unique_ptr<Window>>& WindowManager::getWindows()
     {
         return _windows;
+    }
+
+    void WindowManager::destroyWindow(int ID)
+    {
+        auto window = _windows[ID].get();
+        window->shutdown();
     }
 }

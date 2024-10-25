@@ -5,6 +5,7 @@
 #include "Renderer/RenderAPI.h"
 #include "Vulkan/VulkanWindow.h"
 #include "Core/ThreadPool.h"
+#include "Events/Event.h"
 
 namespace Autofilm
 {
@@ -18,6 +19,8 @@ namespace Autofilm
 		void clear() override;
     
     private:
+        void onEvent(Event& event);
+
         VkInstance _instance;
         VkDevice _device;
         VkPhysicalDevice _physicalDevice;
@@ -30,14 +33,14 @@ namespace Autofilm
         VkCommandBuffer _mainCommandBuffer;
         VkSemaphore _imageAvailableSemaphore;
         VkSemaphore _renderFinishedSemaphore;
-        VkFence _renderFence;
+        const static int FRAMES_IN_FLIGHT { 2 };
+        std::array<VkFence, FRAMES_IN_FLIGHT> _renderFences;
         std::vector<VkSemaphore> _imageAvailableSemaphores;
         std::vector<VkSemaphore> _renderFinishedSemaphores;
 
         double _lastTime { 0 };
         int _frameCount { 0 };
         void printFPS();
-        const static int FRAMES_IN_FLIGHT { 2 };
         int _currentFrame { 0 };
 
         void createInstance();

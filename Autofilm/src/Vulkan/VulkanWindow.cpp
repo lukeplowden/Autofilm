@@ -1,21 +1,23 @@
 #include "autofilmpch.h"
 #include "Vulkan/VulkanWindow.h"
 #include "Core/Log.h"
+#include "Events/AllEvents.h"
 
 namespace Autofilm
 {
     static bool s_GLFWInitialised = false;
 
-    VulkanWindow::VulkanWindow(const WindowProperties& props)
+    VulkanWindow::VulkanWindow(const WindowProperties& props, unsigned int ID)
     {
-        init(props);
+        init(props, ID);
     }
 
-    void VulkanWindow::init(const WindowProperties& props)
+    void VulkanWindow::init(const WindowProperties& props, unsigned int ID)
     {
         _data.title = props.title;
         _data.width = props.width;
         _data.height = props.height;
+        _data.ID = ID;
 
         AF_CORE_INFO("Creating window {0} ({1}, {2})", props.title, props.width, props.height);
         glfwInit();
@@ -24,6 +26,13 @@ namespace Autofilm
         _window = glfwCreateWindow(_data.width, _data.height, _data.title.c_str(), nullptr, nullptr);
         AF_CORE_ASSERT(_window, "Failed to create a GLFW window.");
         glfwSetWindowUserPointer(_window, &_data);
+
+        glfwSetWindowCloseCallback(_window, [](GLFWwindow* window)
+        {
+            WindowData data = *(WindowData*)glfwGetWindowUserPointer(window);
+            WindowCloseEvent event(data.ID);
+            data.eventCallback(event);
+        });
     }
 
     void VulkanWindow::createSurface(VkInstance& instance)

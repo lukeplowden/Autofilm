@@ -22,13 +22,24 @@ namespace Autofilm
         // createSemaphores();
         createRenderFence();
         prepareThreads();
+
+        for (auto& window : WindowManager::getWindows())
+        {
+            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
+            vulkanWindow->setEventCallback(AF_BIND_EVENT_FN(VulkanAPI::onEvent));
+        }
+    }
+
+    void VulkanAPI::onEvent(Event& event)
+    {
+        AF_CORE_INFO("{0}", event.toString());
     }
 
     void VulkanAPI::shutdown()
     {
         vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
-        vkDestroyFence(_device, _renderFence, nullptr);
+        vkDestroyFence(_device, _renderFences[_currentFrame], nullptr);
         vkDestroyCommandPool(_device, _mainCommandPool, nullptr);
         vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
         vkDestroyRenderPass(_device, _renderPass, nullptr);
@@ -136,8 +147,8 @@ namespace Autofilm
 
     void VulkanAPI::drawFrame()
     {
-        vkWaitForFences(_device, 1, &_renderFence, VK_TRUE, UINT64_MAX);
-        vkResetFences(_device, 1, &_renderFence);
+        vkWaitForFences(_device, 1, &_renderFences[_currentFrame], VK_TRUE, UINT64_MAX);
+        vkResetFences(_device, 1, &_renderFences[_currentFrame]);
 
         std::vector<uint32_t> imageIndices;
         imageIndices.resize(_numThreads);
@@ -194,7 +205,7 @@ namespace Autofilm
         submitInfo.signalSemaphoreCount = static_cast<uint32_t>(renderSemaphores.size());
         submitInfo.pSignalSemaphores = renderSemaphores.data();
 
-        VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _renderFence);
+        VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _renderFences[_currentFrame]);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to submit draw command buffer.");
 
         // This can be made on the fly
@@ -745,9 +756,10 @@ namespace Autofilm
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        VkResult result = vkCreateFence(_device, &fenceInfo, nullptr, &_renderFence);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
+        for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
+            VkResult result = vkCreateFence(_device, &fenceInfo, nullptr, &_renderFences[i]);
+            AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
+        }
     }
 
     void VulkanAPI::createSemaphores()

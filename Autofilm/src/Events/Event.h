@@ -1,79 +1,81 @@
 #pragma once
 
 #include "Core/Core.h"
-#include <string>
+
 #include <functional>
 
-namespace Autofilm
+namespace Autofilm 
 {
-    class BaseEvent
-    {
-    public:
-        virtual ~BaseEvent() {};
-    protected:
-        static size_t getNextType()
-        {
-            static size_t type_count = 0;
-            return type_count++;
-        }
-    };
 
-    template <typename EventType>
-    class Event : BaseEvent
-    {
-    public:
-        Event(const EventType& event) : event_(event) {}
-        const EventType& _event;
+	enum class EventType
+	{
+		None = 0,
+		WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
+		AppTick, AppUpdate, AppRender,
+		KeyPressed, KeyReleased, KeyTyped,
+		MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
+	};
 
-        static size_t type()
-        {
-            static size_t _type = BaseEvent::getNextType();
-            return _type;
-        } 
-    };
+	enum EventCategory
+	{
+		None = 0,
+		EventCategoryApplication    = BIT(0),
+		EventCategoryInput          = BIT(1),
+		EventCategoryKeyboard       = BIT(2),
+		EventCategoryMouse          = BIT(3),
+		EventCategoryMouseButton    = BIT(4)
+	};
 
-    class EventManager
-    {
-    public:
-        template <class EventType>
-        using callType = std::function<void(const EventType&)>;
+#define EVENT_CLASS_TYPE(type) static EventType getStaticType() { return EventType::type; }\
+								virtual EventType getEventType() const override { return getStaticType(); }\
+								virtual const char* getName() const override { return #type; }
 
-        template <typename EventType>
-        void subscribe(callType<EventType> callable)
-        {
-            size_t type = Event<EventType>::type();
-            if (type >= _subscribers.size()){
-                _subscribers.resize(type+1);
-            }
-            _subscribers.push_back(CallbackWrapper<EventType>(callable));
-        }
+#define EVENT_CLASS_CATEGORY(category) virtual int getCategoryFlags() const override { return category; }
 
-        template <typename EventType>
-        void dispatch(const EventType& event)
-        {
-            size_t type = Event<EventType>::type();
-            if (type >= _subscribers.size()){
-                _subscribers.resize(type+1);
-            }
+	class Event
+	{
+	public:
+		virtual ~Event() = default;
 
-            Event<EventType> eventWrapper(event);
-            for (auto& receiver : _subscribers[type]){
-                receiver(eventWrapper);
-            }
-        }
+		bool Handled = false;
 
-        template <typename EventType>
-        struct CallbackWrapper
-        {
-            CallbackWrapper(callType callable) : _callable(callable) {}
-            void operator() (const BaseEvent& event) {
-                _callable(static_cast<const Event<EventType>&(event).event_);
-            }
+		virtual EventType getEventType() const = 0;
+		virtual const char* getName() const = 0;
+		virtual int getCategoryFlags() const = 0;
+		virtual std::string toString() const { return getName(); }
 
-            callType<EventType _callable;
-        } ;
+		bool IsInCategory(EventCategory category)
+		{
+			return getCategoryFlags() & category;
+		}
+	};
 
-    private:
-        std::vector<std::vector<callType<BaseEvent>>> _subscribers;
-    };
+	class EventDispatcher
+	{
+	public:
+		EventDispatcher(Event& event)
+			: _event(event)
+		{
+		}
+		
+		// F will be deduced by the compiler
+		template<typename T, typename F>
+		bool Dispatch(const F& func)
+		{
+			if (_event.getEventType() == T::getStaticType())
+			{
+				_event.Handled |= func(static_cast<T&>(_event));
+				return true;
+			}
+			return false;
+		}
+	private:
+		Event& _event;
+	};
+
+	inline std::ostream& operator<<(std::ostream& os, const Event& e)
+	{
+		return os << e.toString();
+	}
+
 }

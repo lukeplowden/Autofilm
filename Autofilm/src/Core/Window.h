@@ -2,6 +2,7 @@
 
 #include "autofilmpch.h"
 #include "Core/Core.h"
+#include "Events/Event.h"
 
 namespace Autofilm
 {
@@ -23,7 +24,7 @@ namespace Autofilm
     class AUTOFILM_API Window
     {
     public:
-        // using eventCallbackFn = std::function<void(Event&)>;
+        using EventCallbackFn = std::function<void(Event&)>;
 
         virtual ~Window() {}
 
@@ -33,14 +34,13 @@ namespace Autofilm
         virtual unsigned int getHeight() const = 0;
     
         // Window attributes
-        // virtual void setEventCallback(const eventCallbackFn& callback) = 0;
+        virtual void setEventCallback(const EventCallbackFn& callback) = 0;
         virtual void setVSync(bool enabled) = 0;
         virtual bool isVSync() const = 0;
         virtual void setFullscreen(bool fullscreen) = 0;
         virtual bool isFullscreen() const = 0;
 
-        private:
-            int _id;
+        virtual void shutdown() = 0;
     };
 
     enum class RenderAPIType;
@@ -49,12 +49,13 @@ namespace Autofilm
     public:
         static void Init(RenderAPIType type);
         static void createWindow(const WindowProperties&  props = WindowProperties());
-        static void destroyWindow(){};
+        static void destroyWindow(int ID);
 
         static const std::vector<std::unique_ptr<Window>>& getWindows();
     private:
         static std::vector<std::unique_ptr<Window>> _windows;
         static RenderAPIType _type;
-        static std::function<std::unique_ptr<Window>(const WindowProperties&)> _createWindowFunc;
+        static std::function<std::unique_ptr<Window>(const WindowProperties&, unsigned int ID)> _createWindowFunc;
+        static unsigned int nextID;
     };
 }

@@ -17,6 +17,7 @@
 #endif
 
 #include "Core/Log.h"
+#include <iostream>
 
 #ifdef AF_ENABLE_ASSERTS
 	#define AF_ASSERT(x, ...) { if(!(x)) { AF_ERROR("Assertion failed {0}", __VA_ARGS__); __debugbreak(); } }
@@ -27,3 +28,7 @@
 	#define AF_CORE_ASSERT(x, ...)
 	#define AF_VK_ASSERT(x, ...)
 #endif
+
+#define BIT(x) (1 << x)
+
+#define AF_BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
