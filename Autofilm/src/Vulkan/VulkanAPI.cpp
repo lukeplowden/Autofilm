@@ -31,6 +31,14 @@ namespace Autofilm
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
             vulkanWindow->setEventCallback(AF_BIND_EVENT_FN(VulkanAPI::onEvent));
         }
+        
+        // initialize the memory allocator
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = _physicalDevice;
+        allocatorInfo.device = _device;
+        allocatorInfo.instance = _instance;
+        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        vmaCreateAllocator(&allocatorInfo, &_allocator);
     }
 
     void VulkanAPI::onEvent(Event& event)
@@ -40,6 +48,8 @@ namespace Autofilm
 
     void VulkanAPI::shutdown()
     {
+        _mainDeletionQueue.flush();
+
         vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
         vkDestroyFence(_device, _renderFences[_currentFrame], nullptr);
@@ -100,11 +110,11 @@ namespace Autofilm
         }
     }
 
-    void VulkanAPI::threadRenderCode(const ThreadData* thread, int currentFrame, uint32_t imageIndex)
+    void VulkanAPI::threadRenderCode(ThreadData* thread, int currentFrame, uint32_t imageIndex)
     {
         const VulkanWindow::WindowData* windowData = thread->windowData;
         AF_CORE_ASSERT(windowData, "Could not acess the window data on a separate thread!");
-
+        thread->deletionQueue[currentFrame].flush();
         vkResetCommandPool(_device, thread->commandPools[currentFrame], 0);
                 
         VkCommandBufferBeginInfo beginInfo{};
@@ -195,7 +205,6 @@ namespace Autofilm
         _threadPool.wait();
         printFPS();
 
-        // TODO: This can mostly be defined in init
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
@@ -216,7 +225,7 @@ namespace Autofilm
         // This can be made on the fly
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(_renderFinishedSemaphores.size());;
+        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(renderSemaphores.size());;
         presentInfo.pWaitSemaphores = renderSemaphores.data();
         presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());;
         presentInfo.pSwapchains = swapchains.data();
@@ -467,12 +476,13 @@ namespace Autofilm
 
     void VulkanAPI::createRenderPass()
     {
-        // Come back to this
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = VK_FORMAT_B8G8R8A8_SRGB;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 

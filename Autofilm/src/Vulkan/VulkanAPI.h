@@ -10,6 +10,24 @@
 
 namespace Autofilm
 {
+    struct DeletionQueue
+    {
+        std::deque<std::function<void()>> deletors;
+
+        void push_function(std::function<void()>&& function) {
+            deletors.push_back(function);
+        }
+
+        void flush() {
+            // reverse iterate the deletion queue to execute all the functions
+            for (auto it = deletors.rbegin(); it != deletors.rend(); it++) {
+                (*it)(); //call functors
+            }
+
+            deletors.clear();
+        }
+    };
+
     class AUTOFILM_API VulkanAPI : public RenderAPI
     {
     public:
@@ -38,6 +56,8 @@ namespace Autofilm
         std::array<VkFence, FRAMES_IN_FLIGHT> _renderFences;
         std::vector<VkSemaphore> _imageAvailableSemaphores;
         std::vector<VkSemaphore> _renderFinishedSemaphores;
+        VmaAllocator _allocator;
+        DeletionQueue _mainDeletionQueue;
 
         double _lastTime { 0 };
         int _frameCount { 0 };
@@ -104,11 +124,12 @@ namespace Autofilm
             std::array<VkSemaphore, FRAMES_IN_FLIGHT> renderSemaphores;
             std::array<VkSemaphore, FRAMES_IN_FLIGHT> frameSemaphores;
             VulkanWindow::WindowData* windowData;
+            std::array<DeletionQueue, FRAMES_IN_FLIGHT> deletionQueue;
         };
         std::vector<ThreadData> _threadData;
         ThreadPool _threadPool;
         void prepareThreads();
-        void threadRenderCode(const ThreadData* thread, int currentFrame, uint32_t imageIndex);
+        void threadRenderCode(ThreadData* thread, int currentFrame, uint32_t imageIndex);
 
         // Validation Layers
         bool _enableValidationLayers = true;
