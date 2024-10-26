@@ -111,7 +111,7 @@ namespace Autofilm
         void threadRenderCode(const ThreadData* thread, int currentFrame, uint32_t imageIndex);
 
         // Validation Layers
-        bool _enableValidationLayers = false;
+        bool _enableValidationLayers = true;
         VkDebugUtilsMessengerEXT _debugMessenger;
         const std::vector<const char*> _validationLayers = {
             "VK_LAYER_KHRONOS_validation"
