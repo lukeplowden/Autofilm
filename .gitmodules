@@ -7,3 +7,6 @@
 [submodule "Autofilm/external/glm"]
 	path = Autofilm/external/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "Autofilm/external/VulkanMemoryAllocator"]
+	path = Autofilm/external/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
