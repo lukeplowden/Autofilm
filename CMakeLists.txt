@@ -20,6 +20,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 add_subdirectory(${AUTOFILM_EXT}/glfw)
 find_package(Vulkan REQUIRED)
 add_subdirectory(${AUTOFILM_EXT}/spdlog)
+add_subdirectory(${AUTOFILM_EXT}/VulkanMemoryAllocator)
 
 # GStreamer
 if(DEFINED ENV{GSTREAMER_1_0_ROOT_MSVC_X86_64})
@@ -86,6 +87,7 @@ target_include_directories(Autofilm PUBLIC
 
 target_link_libraries(Autofilm PUBLIC 
     Vulkan::Vulkan
+    GPUOpen::VulkanMemoryAllocator
     glfw
     spdlog::spdlog
     gstreamer-1.0
