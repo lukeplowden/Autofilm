@@ -65,6 +65,8 @@ add_library(Autofilm SHARED
     ${AUTOFILM_SRC}/Vulkan/VulkanUtils.cpp
     ${AUTOFILM_SRC}/Vulkan/VulkanUtils.h
     ${AUTOFILM_SRC}/Vulkan/VulkanWindow.cpp
+    # ${AUTOFILM_SRC}/Vulkan/VulkanWindow.h
+    # ${AUTOFILM_SRC}/Vulkan/VulkanWindowManager.cpp
     ${AUTOFILM_SRC}/Vulkan/VulkanWindow.h
     ${AUTOFILM_SRC}/Renderer/RenderAPI.h
     ${AUTOFILM_SRC}/Renderer/Renderer.cpp

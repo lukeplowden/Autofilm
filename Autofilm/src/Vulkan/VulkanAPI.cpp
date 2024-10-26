@@ -2,6 +2,7 @@
 
 #define VMA_IMPLEMENTATION
 #include "Vulkan/VulkanAPI.h"
+#include "Vulkan/VulkanUtils.h"
 
 #include "Core/Log.h"
 #include "Core/File.h"
@@ -12,24 +13,25 @@ namespace Autofilm
     {
         createInstance();
         setupDebugMessenger();
-        createSurfaces();
+        createSurfaces(); // For each window
         pickPhysicalDevice();
         createLogicalDevice();
-        createSwapchains();
-        createImageViews();
         createRenderPass();
         createGraphicsPipeline();
-        createFramebuffers();
-        createCommandPool();
-        createCommandBuffer();
-        // createSemaphores();
         createRenderFence();
         prepareThreads();
 
-        for (auto& window : WindowManager::getWindows())
+        auto& windows = WindowManager::getWindows();
+        for (int i = 0; i < WindowManager::getWindows().size(); i++)
         {
-            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
+            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(windows[i].get());
+            auto ID = vulkanWindow->getID();
+            
             vulkanWindow->setEventCallback(AF_BIND_EVENT_FN(VulkanAPI::onEvent));
+            
+            createSwapchain(ID);
+            createImageViews(ID);
+            createFramebuffers(ID);
         }
         
         // initialize the memory allocator
@@ -50,10 +52,7 @@ namespace Autofilm
     {
         _mainDeletionQueue.flush();
 
-        vkDestroySemaphore(_device, _imageAvailableSemaphore, nullptr);
-        vkDestroySemaphore(_device, _renderFinishedSemaphore, nullptr);
         vkDestroyFence(_device, _renderFences[_currentFrame], nullptr);
-        vkDestroyCommandPool(_device, _mainCommandPool, nullptr);
         vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
         vkDestroyRenderPass(_device, _renderPass, nullptr);
         vkDestroyDevice(_device, nullptr);
@@ -91,10 +90,8 @@ namespace Autofilm
         
         for (int i = 0; i < _numThreads; i++) {
             ThreadData* thread = &_threadData[i];
-            
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(windows[i].get());
-
-            thread->windowData = &vulkanWindow->_data;
+            thread->windowID = vulkanWindow->getID();
             for (int j = 0; j < FRAMES_IN_FLIGHT; j++) {
                 VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &thread->commandPools[j]);
                 AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
@@ -112,8 +109,7 @@ namespace Autofilm
 
     void VulkanAPI::threadRenderCode(ThreadData* thread, int currentFrame, uint32_t imageIndex)
     {
-        const VulkanWindow::WindowData* windowData = thread->windowData;
-        AF_CORE_ASSERT(windowData, "Could not acess the window data on a separate thread!");
+        VulkanWindowResources& resources = _windowResources[thread->windowID];
         thread->deletionQueue[currentFrame].flush();
         vkResetCommandPool(_device, thread->commandPools[currentFrame], 0);
                 
@@ -124,14 +120,13 @@ namespace Autofilm
 
         auto& commandBuffer = thread->commandBuffers[currentFrame];
         VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        
 
         VkRenderPassBeginInfo renderPassBeginInfo{};
         renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassBeginInfo.renderPass = _renderPass;
-        renderPassBeginInfo.framebuffer = windowData->swapchainFramebuffers[imageIndex];
+        renderPassBeginInfo.framebuffer = resources.swapchainFramebuffers[imageIndex];
         renderPassBeginInfo.renderArea.offset = { 0, 0 };
-        renderPassBeginInfo.renderArea.extent = windowData->swapchainExtent;
+        renderPassBeginInfo.renderArea.extent = resources.swapchainExtent;
 
         VkClearValue clearColor = { { { (float)std::sin(glfwGetTime()), 0.4f, 0.3f, 1.0f } } };
         renderPassBeginInfo.clearValueCount = 1;
@@ -143,15 +138,15 @@ namespace Autofilm
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = static_cast<float>(windowData->swapchainExtent.width);
-        viewport.height = static_cast<float>(windowData->swapchainExtent.height);
+        viewport.width = static_cast<float>(resources.swapchainExtent.width);
+        viewport.height = static_cast<float>(resources.swapchainExtent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = windowData->swapchainExtent;
+        scissor.extent = resources.swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
@@ -189,14 +184,15 @@ namespace Autofilm
 
         for (uint32_t t = 0; t < _numThreads; t++) {
             ThreadData* thread = &_threadData[t];
+            VulkanWindowResources& resources = _windowResources[thread->windowID];
             uint32_t imageIndex;
             
-            vkAcquireNextImageKHR(_device, thread->windowData->swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+            vkAcquireNextImageKHR(_device, resources.swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
             
             _threadPool._threads[t]->addJob([=] { threadRenderCode(thread, _currentFrame, imageIndex); });
             
             imageIndices[t] = imageIndex;
-            swapchains[t] = thread->windowData->swapchain;
+            swapchains[t] = resources.swapchain;
             frameSemaphores[t] = thread->frameSemaphores[_currentFrame];
             renderSemaphores[t] = thread->renderSemaphores[_currentFrame];
             commandBuffers[t] = thread->commandBuffers[_currentFrame];
@@ -258,48 +254,6 @@ namespace Autofilm
         }
     }
 
-    void VulkanAPI::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData)
-    {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0; // Optional
-        beginInfo.pInheritanceInfo = nullptr; // Optional
-        VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to begin recording command buffer!");
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = _renderPass;
-        renderPassInfo.framebuffer = windowData.swapchainFramebuffers[imageIndex];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = windowData.swapchainExtent;
-
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(windowData.swapchainExtent.width);
-        viewport.height = static_cast<float>(windowData.swapchainExtent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = windowData.swapchainExtent;
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
-        vkCmdEndRenderPass(commandBuffer);
-        VkResult result2 = vkEndCommandBuffer(commandBuffer);
-        AF_VK_ASSERT(result2 == VK_SUCCESS, "Failed to record command buffer!");
-    }
-
     void VulkanAPI::createInstance()
     {
 
@@ -341,17 +295,7 @@ namespace Autofilm
     {
         for (const auto& window : WindowManager::getWindows()) {
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
-            AF_VK_ASSERT(vulkanWindow, "Failed to cast window to VulkanWindow. The window type does not match the renderer.");
-            vulkanWindow->createSurface(_instance);
-        }
-    }
-
-    void VulkanAPI::createImageViews()
-    {
-        for (const auto& window : WindowManager::getWindows()) {
-            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
-            AF_VK_ASSERT(vulkanWindow, "Failed to cast window to VulkanWindow. The window type does not match the renderer.");
-            vulkanWindow->createImageViews(_device);
+            createSurface(vulkanWindow->getID());
         }
     }
 
@@ -401,7 +345,6 @@ namespace Autofilm
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.pEnabledFeatures = &deviceFeatures;
-        
 
         createInfo.enabledExtensionCount = static_cast<uint32_t>(_deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = _deviceExtensions.data();
@@ -421,56 +364,118 @@ namespace Autofilm
         vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &_presentQueue);
     }
 
-    void VulkanAPI::createSwapchains()
+    void VulkanAPI::createSurface(int windowID)
     {
-        for (auto& window : WindowManager::getWindows()) {
-            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
-            VkSurfaceKHR surface = vulkanWindow->getSurface();
-            GLFWwindow* wndPtr = vulkanWindow->_window;
+        VulkanWindowResources& resources = _windowResources[windowID];
+        GLFWwindow* wndPtr = dynamic_cast<VulkanWindow*>(WindowManager::getWindows()[windowID].get())->_window;
+        VkResult result = glfwCreateWindowSurface(_instance, wndPtr, nullptr, &resources.surface);
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a surface");
+    }
 
-            SwapchainSupportDetails swapchainSupport = querySwapchainSupport(_physicalDevice, surface);
+    void VulkanAPI::createSwapchain(int windowID)
+    {
+        VulkanWindowResources& resources = _windowResources[windowID];
+        VkSurfaceKHR surface = resources.surface;
+        GLFWwindow* wndPtr = dynamic_cast<VulkanWindow*>(WindowManager::getWindows()[windowID].get())->_window;
 
-            VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapchainSupport.formats);
-            VkPresentModeKHR presentMode = chooseSwapPresentMode(swapchainSupport.presentModes);
-            VkExtent2D extent = chooseSwapExtent(swapchainSupport.capabilities, wndPtr);
+        SwapchainSupportDetails swapchainSupport = querySwapchainSupport(_physicalDevice, surface);
 
-            uint32_t imageCount = swapchainSupport.capabilities.minImageCount + 1;
-            if (swapchainSupport.capabilities.maxImageCount > 0 && imageCount > swapchainSupport.capabilities.maxImageCount) {
-                imageCount = swapchainSupport.capabilities.maxImageCount;
-            }
+        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapchainSupport.formats);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapchainSupport.presentModes);
+        VkExtent2D extent = chooseSwapExtent(swapchainSupport.capabilities, wndPtr);
 
-            VkSwapchainCreateInfoKHR createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            createInfo.surface = surface;
+        uint32_t imageCount = swapchainSupport.capabilities.minImageCount + 1;
+        if (swapchainSupport.capabilities.maxImageCount > 0 && imageCount > swapchainSupport.capabilities.maxImageCount) {
+            imageCount = swapchainSupport.capabilities.maxImageCount;
+        }
 
-            createInfo.minImageCount = imageCount;
-            createInfo.imageFormat = surfaceFormat.format;
-            createInfo.imageColorSpace = surfaceFormat.colorSpace;
-            createInfo.imageExtent = extent;
-            createInfo.imageArrayLayers = 1;
-            createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        VkSwapchainCreateInfoKHR createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = surface;
 
-            QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
-            uint32_t queueFamilyIndices[] = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
+        createInfo.minImageCount = imageCount;
+        createInfo.imageFormat = surfaceFormat.format;
+        createInfo.imageColorSpace = surfaceFormat.colorSpace;
+        createInfo.imageExtent = extent;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-            if (indices.graphicsFamily != indices.presentFamily) {
-                createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-                createInfo.queueFamilyIndexCount = 2;
-                createInfo.pQueueFamilyIndices = queueFamilyIndices;
-            } else {
-                createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-                createInfo.queueFamilyIndexCount = 0; // Optional
-                createInfo.pQueueFamilyIndices = nullptr; // Optional
-            }
+        QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+        uint32_t queueFamilyIndices[] = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
 
-            createInfo.preTransform = swapchainSupport.capabilities.currentTransform;
-            createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        if (indices.graphicsFamily != indices.presentFamily) {
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        } else {
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            createInfo.queueFamilyIndexCount = 0; // Optional
+            createInfo.pQueueFamilyIndices = nullptr; // Optional
+        }
+
+        createInfo.preTransform = swapchainSupport.capabilities.currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        
+        createInfo.presentMode = presentMode;
+        createInfo.clipped = VK_TRUE;
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
+        
+        VkResult result = vkCreateSwapchainKHR(_device, &createInfo, nullptr, &resources.swapchain);
+        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a Vulkan Swapchain.");
+        vkGetSwapchainImagesKHR(_device, resources.swapchain, &imageCount, nullptr);
+        resources.swapchainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(_device, resources.swapchain, &imageCount, resources.swapchainImages.data());
+        resources.swapchainImageFormat = surfaceFormat.format;
+        resources.swapchainExtent = extent;
+    }
+
+    void VulkanAPI::createImageViews(int windowID)
+    {
+        VulkanWindowResources& resources = _windowResources[windowID];
+        resources.swapchainImageViews.resize(
+            resources.swapchainImages.size()
+        );
+        for (size_t i = 0; i < resources.swapchainImages.size(); i++) {
+            VkImageViewCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            createInfo.image = resources.swapchainImages[i];
+            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            createInfo.format = resources.swapchainImageFormat;
+            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            createInfo.subresourceRange.baseMipLevel = 0;
+            createInfo.subresourceRange.levelCount = 1;
+            createInfo.subresourceRange.baseArrayLayer = 0;
+            createInfo.subresourceRange.layerCount = 1;
+            VkResult result = vkCreateImageView(_device, &createInfo, nullptr, &resources.swapchainImageViews[i]);
+            AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create an image view");
+        }
+    }
+
+    void VulkanAPI::createFramebuffers(int windowID)
+    {
+        VulkanWindowResources& resources = _windowResources[windowID];
+        const auto imageViews = resources.swapchainImageViews;
+        resources.swapchainFramebuffers.resize(imageViews.size());
+        for (size_t i = 0; i < imageViews.size(); i++) {
+            VkImageView attachments[] = {
+                imageViews[i]
+            };
+
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = _renderPass;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width = resources.swapchainExtent.width;
+            framebufferInfo.height = resources.swapchainExtent.height;
+            framebufferInfo.layers = 1;
             
-            createInfo.presentMode = presentMode;
-            createInfo.clipped = VK_TRUE;
-            createInfo.oldSwapchain = VK_NULL_HANDLE;
-            
-            vulkanWindow->createSwapchain(_device, createInfo, imageCount, surfaceFormat.format, extent);
+            VkResult result = vkCreateFramebuffer(_device, &framebufferInfo, nullptr, &resources.swapchainFramebuffers[i]);
+            AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a framebuffer.");       
         }
     }
 
@@ -484,7 +489,7 @@ namespace Autofilm
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR ;
 
         VkAttachmentReference colorAttachmentRef{};
         colorAttachmentRef.attachment = 0;
@@ -643,39 +648,6 @@ namespace Autofilm
         vkDestroyShaderModule(_device, vertShaderModule, nullptr);
     }
 
-    void VulkanAPI::createFramebuffers()
-    {
-        for (auto& window : WindowManager::getWindows()) {
-            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
-            vulkanWindow->createFramebuffers(_device, _renderPass);
-        }
-    }
-
-    void VulkanAPI::createCommandPool()
-    {
-        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(_physicalDevice);
-
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
-
-        VkResult result = vkCreateCommandPool(_device, &poolInfo, nullptr, &_mainCommandPool);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
-    }
-
-    void VulkanAPI::createCommandBuffer()
-    {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = _mainCommandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
-        
-        VkResult result = vkAllocateCommandBuffers(_device, &allocInfo, &_mainCommandBuffer);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a command pool.");
-    }
-
     void VulkanAPI::createRenderFence()
     {
         VkFenceCreateInfo fenceInfo{};
@@ -685,23 +657,6 @@ namespace Autofilm
             VkResult result = vkCreateFence(_device, &fenceInfo, nullptr, &_renderFences[i]);
             AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
         }
-    }
-
-    void VulkanAPI::createSemaphores()
-    {
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkSemaphore imageAvailableSemaphore;
-        VkSemaphore renderFinishedSemaphore;
-
-        VkResult result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
-        _imageAvailableSemaphores.push_back(imageAvailableSemaphore);
-
-        result = vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &renderFinishedSemaphore);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create semaphores.");
-        _renderFinishedSemaphores.push_back(renderFinishedSemaphore);
     }
 
     VkShaderModule VulkanAPI::createShaderModule(const std::vector<char>& code) 
@@ -723,7 +678,8 @@ namespace Autofilm
         bool swapchainAdequate = true;
         for (auto& window : WindowManager::getWindows()) {
             VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
-            SwapchainSupportDetails swapchainSupport = querySwapchainSupport(device, vulkanWindow->getSurface());
+            auto& surface = _windowResources[vulkanWindow->getID()].surface;
+            SwapchainSupportDetails swapchainSupport = querySwapchainSupport(device, surface);
             if (swapchainSupport.formats.empty() && swapchainSupport.presentModes.empty()) {
                 swapchainAdequate = false;
                 break;
@@ -830,8 +786,9 @@ namespace Autofilm
         for (const auto& queueFamily : queueFamilies) {
             for (const auto& window : WindowManager::getWindows()) {
                 VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(window.get());
+                auto& surface = _windowResources[vulkanWindow->getID()].surface;
                 VkBool32 presentSupport = false;
-                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, vulkanWindow->getSurface(), &presentSupport);
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
                 if (presentSupport) {
                     indices.presentFamily = i;
                 }
