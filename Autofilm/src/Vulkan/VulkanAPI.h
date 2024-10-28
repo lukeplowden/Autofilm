@@ -50,6 +50,13 @@ namespace Autofilm
         VkPipelineLayout _pipelineLayout;
         VkPipeline _graphicsPipeline;
         std::array<VkFence, FRAMES_IN_FLIGHT> _renderFences;
+        struct AllocatedImage {
+            VkImage image;
+            VkImageView imageView;
+            VmaAllocation allocation;
+            VkExtent3D imageExtent;
+            VkFormat imageFormat;
+        };
         struct VulkanWindowResources {
             VkSurfaceKHR surface;
             VkSwapchainKHR swapchain;
@@ -58,6 +65,7 @@ namespace Autofilm
             VkExtent2D swapchainExtent;
             std::vector<VkImageView> swapchainImageViews;
             std::vector<VkFramebuffer> swapchainFramebuffers;
+            AllocatedImage drawImage;
         };
         std::unordered_map<int, VulkanWindowResources> _windowResources;
 
