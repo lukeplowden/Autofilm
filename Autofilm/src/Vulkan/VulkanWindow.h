@@ -1,9 +1,10 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+#include <string>
+
 #include "Core/Core.h"
 #include "Core/Window.h"
-#include <string>
 #include "Events/Event.h"
 
 namespace Autofilm
@@ -21,20 +22,12 @@ namespace Autofilm
             bool fullscreen;
             unsigned int ID;
 
-            VkSurfaceKHR surface;
-            VkSwapchainKHR swapchain;
-            std::vector<VkImage> swapchainImages;
-            VkFormat swapchainImageFormat;
-            VkExtent2D swapchainExtent;
-            std::vector<VkImageView> swapchainImageViews;
-            std::vector<VkFramebuffer> swapchainFramebuffers;
-
             EventCallbackFn eventCallback;
         };
 
     public:
         WindowData getData() { return _data; }
-
+        unsigned int getID() { return _data.ID; }
         VulkanWindow(const WindowProperties& props, unsigned int ID);
         virtual ~VulkanWindow();
 
@@ -50,17 +43,6 @@ namespace Autofilm
         bool isFullscreen() const override;
         void setVSync(bool enabled) override;
         bool isVSync() const override;
-        // Vulkan specifics
-        // Surface
-        void createSurface(VkInstance& instance);
-        void destroySurface(VkInstance& instance);
-        VkSurfaceKHR getSurface() { return _data.surface; }
-        // Swapchain
-        void createSwapchain(VkDevice& device, VkSwapchainCreateInfoKHR& createInfo, uint32_t imageCount, VkFormat imageFormat, VkExtent2D extent);
-        // Image views
-        void createImageViews(VkDevice& device);
-        // Framebuffers
-        void createFramebuffers(VkDevice& device, VkRenderPass& renderPass);
 
     private: 
         virtual void init(const WindowProperties& props, unsigned int ID);
@@ -68,5 +50,6 @@ namespace Autofilm
         GLFWwindow* _window;
         WindowData _data;
         friend class VulkanAPI;
+        friend class VulkanWindowManager;
     };
 }

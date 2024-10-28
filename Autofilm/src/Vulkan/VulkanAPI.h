@@ -4,7 +4,7 @@
 #include <vk_mem_alloc.h>
 
 #include "Renderer/RenderAPI.h"
-#include "Vulkan/VulkanWindow.h"
+#include "Vulkan/VulkanWindowManager.h"
 #include "Core/ThreadPool.h"
 #include "Events/Event.h"
 
@@ -36,9 +36,10 @@ namespace Autofilm
         
         void clearColor(const glm::vec4& color) override;
 		void clear() override;
-    
+
     private:
         void onEvent(Event& event);
+        const static int FRAMES_IN_FLIGHT { 2 };
 
         VkInstance _instance;
         VkDevice _device;
@@ -48,14 +49,18 @@ namespace Autofilm
         VkRenderPass _renderPass;
         VkPipelineLayout _pipelineLayout;
         VkPipeline _graphicsPipeline;
-        VkCommandPool _mainCommandPool;
-        VkCommandBuffer _mainCommandBuffer;
-        VkSemaphore _imageAvailableSemaphore;
-        VkSemaphore _renderFinishedSemaphore;
-        const static int FRAMES_IN_FLIGHT { 2 };
         std::array<VkFence, FRAMES_IN_FLIGHT> _renderFences;
-        std::vector<VkSemaphore> _imageAvailableSemaphores;
-        std::vector<VkSemaphore> _renderFinishedSemaphores;
+        struct VulkanWindowResources {
+            VkSurfaceKHR surface;
+            VkSwapchainKHR swapchain;
+            std::vector<VkImage> swapchainImages;
+            VkFormat swapchainImageFormat;
+            VkExtent2D swapchainExtent;
+            std::vector<VkImageView> swapchainImageViews;
+            std::vector<VkFramebuffer> swapchainFramebuffers;
+        };
+        std::unordered_map<int, VulkanWindowResources> _windowResources;
+
         VmaAllocator _allocator;
         DeletionQueue _mainDeletionQueue;
 
@@ -70,18 +75,25 @@ namespace Autofilm
         void pickPhysicalDevice();
         bool isDeviceSuitable(VkPhysicalDevice device);
         void createLogicalDevice();
-        void createSwapchains();
-        void createImageViews();
+        
+        // Window data
+        void createSurface(int windowID);
+        void createSwapchain(int windowID);
+        void createImageViews(int windowID);
+        void createFramebuffers(int windowID);
+
         void createRenderPass();
         void createGraphicsPipeline();
-        void createFramebuffers();
-        void createCommandPool();
-        void createCommandBuffer();
-        void createSemaphores();
         void createRenderFence();
         void drawFrame() override;
 
-        void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VulkanWindow::WindowData& windowData);
+        struct AllocatedImage {
+            VkImage image;
+            VkImageView imageView;
+            VmaAllocation allocation;
+            VkExtent3D imageExtent;
+            VkFormat imageFormat;
+        };
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
             std::optional<uint32_t> computeFamily;
@@ -119,11 +131,11 @@ namespace Autofilm
         uint32_t _numThreads { 0 };
         uint32_t _maxNumThreads { 0 };
         struct ThreadData {
+            int windowID;
             std::array<VkCommandPool, FRAMES_IN_FLIGHT> commandPools;
             std::array<VkCommandBuffer, FRAMES_IN_FLIGHT> commandBuffers;
             std::array<VkSemaphore, FRAMES_IN_FLIGHT> renderSemaphores;
             std::array<VkSemaphore, FRAMES_IN_FLIGHT> frameSemaphores;
-            VulkanWindow::WindowData* windowData;
             std::array<DeletionQueue, FRAMES_IN_FLIGHT> deletionQueue;
         };
         std::vector<ThreadData> _threadData;
