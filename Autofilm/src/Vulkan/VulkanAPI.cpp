@@ -128,7 +128,7 @@ namespace Autofilm
         renderPassBeginInfo.renderArea.offset = { 0, 0 };
         renderPassBeginInfo.renderArea.extent = resources.swapchainExtent;
 
-        VkClearValue clearColor = { { { (float)std::sin(glfwGetTime()), 0.4f, 0.3f, 1.0f } } };
+        VkClearValue clearColor = { { { ((float)std::sin(glfwGetTime()) * 0.5f) + 0.5f, 0.4f, 0.3f, 1.0f } } };
         renderPassBeginInfo.clearValueCount = 1;
         renderPassBeginInfo.pClearValues = &clearColor;
         
