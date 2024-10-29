@@ -68,8 +68,9 @@ namespace Autofilm
             std::vector<VkFramebuffer> swapchainFramebuffers;
             AllocatedImage drawImage;
             bool framebufferResized = false;
-            bool imageAcquired = false;
+            bool swapchainInvalid = false;
         };
+        std::unordered_map<int, VulkanWindowResources> _windowResources;
         struct FrameSubmitPresentInfo {
             std::vector<uint32_t> imageIndices;
             std::vector<VkSwapchainKHR> swapchains;
@@ -86,7 +87,6 @@ namespace Autofilm
             }
         };
         FrameSubmitPresentInfo submitPresentInfo; 
-        std::unordered_map<int, VulkanWindowResources> _windowResources;
 
         VmaAllocator _allocator;
         DeletionQueue _mainDeletionQueue;

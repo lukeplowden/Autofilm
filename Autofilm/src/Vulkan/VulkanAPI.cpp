@@ -86,7 +86,6 @@ namespace Autofilm
         if (_numThreads > _maxNumThreads) {
             AF_CORE_WARN("More windows are open than threads available. Performance may be impacted.");
         }
-        submitPresentInfo.resize(_numThreads);
 
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -179,29 +178,41 @@ namespace Autofilm
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr;
 
+        uint32_t validWindows { 0 };
+        std::vector<uint32_t> outOfDateWindowIDs;
+
+        std::vector<uint32_t> imageIndices;
+        std::vector<VkSwapchainKHR> swapchains;
+        std::vector<VkSemaphore> frameSemaphores;
+        std::vector<VkSemaphore> renderSemaphores;
+        std::vector<VkCommandBuffer> commandBuffers;
+        imageIndices.reserve(_numThreads);
+        swapchains.reserve(_numThreads);
+        frameSemaphores.reserve(_numThreads);
+        renderSemaphores.reserve(_numThreads);
+        commandBuffers.reserve(_numThreads);
+
         for (uint32_t t = 0; t < _numThreads; t++) {
             ThreadData* thread = &_threadData[t];
             VulkanWindowResources& resources = _windowResources[thread->windowID];
             uint32_t imageIndex;
             
-            if (!resources.imageAcquired) {
-                VkResult result = vkAcquireNextImageKHR(_device, resources.swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
-                if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resources.framebufferResized == true) {
-                    resources.framebufferResized = false;
-                    recreateSwapchain(thread->windowID);
-                    return;
-                } 
-                else {
-                    resources.imageAcquired = true;
-                    _threadPool._threads[t]->addJob([=] { threadRenderCode(thread, _currentFrame, imageIndex); });
-            
-                    submitPresentInfo.imageIndices[t] = imageIndex;
-                    submitPresentInfo.swapchains[t] = resources.swapchain;
-                    submitPresentInfo.frameSemaphores[t] = thread->frameSemaphores[_currentFrame];
-                    submitPresentInfo.renderSemaphores[t] = thread->renderSemaphores[_currentFrame];
-                    submitPresentInfo.commandBuffers[t] = thread->commandBuffers[_currentFrame];
-                }
+            VkResult result = vkAcquireNextImageKHR(_device, resources.swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resources.framebufferResized == true) {
+                resources.framebufferResized = false;
+                outOfDateWindowIDs.push_back(thread->windowID);
+                frameSemaphores.push_back(thread->frameSemaphores[_currentFrame]);
+                continue;
             }
+            _threadPool._threads[t]->addJob([=] { threadRenderCode(thread, _currentFrame, imageIndex); });
+
+            imageIndices.push_back(imageIndex);
+            swapchains.push_back(resources.swapchain);
+            frameSemaphores.push_back(thread->frameSemaphores[_currentFrame]);
+            renderSemaphores.push_back(thread->renderSemaphores[_currentFrame]);
+            commandBuffers.push_back(thread->commandBuffers[_currentFrame]);
+
+            validWindows++;
         }
         vkResetFences(_device, 1, &_renderFences[_currentFrame]);
 
@@ -214,13 +225,13 @@ namespace Autofilm
                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        submitInfo.waitSemaphoreCount = static_cast<uint32_t>(submitPresentInfo.frameSemaphores.size());
-        submitInfo.pWaitSemaphores = submitPresentInfo.frameSemaphores.data();
+        submitInfo.waitSemaphoreCount = frameSemaphores.size();
+        submitInfo.pWaitSemaphores = frameSemaphores.data();
         submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = static_cast<uint32_t>(submitPresentInfo.commandBuffers.size());
-        submitInfo.pCommandBuffers = submitPresentInfo.commandBuffers.data();
-        submitInfo.signalSemaphoreCount = static_cast<uint32_t>(submitPresentInfo.renderSemaphores.size());
-        submitInfo.pSignalSemaphores = submitPresentInfo.renderSemaphores.data();
+        submitInfo.commandBufferCount = validWindows;
+        submitInfo.pCommandBuffers = commandBuffers.data();
+        submitInfo.signalSemaphoreCount = validWindows;
+        submitInfo.pSignalSemaphores = renderSemaphores.data();
 
         VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _renderFences[_currentFrame]);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to submit draw command buffer.");
@@ -228,19 +239,16 @@ namespace Autofilm
         // This can be made on the fly
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(submitPresentInfo.renderSemaphores.size());;
-        presentInfo.pWaitSemaphores = submitPresentInfo.renderSemaphores.data();
-        presentInfo.swapchainCount = static_cast<uint32_t>(submitPresentInfo.swapchains.size());;
-        presentInfo.pSwapchains = submitPresentInfo.swapchains.data();
-        presentInfo.pImageIndices = submitPresentInfo.imageIndices.data();
+        presentInfo.waitSemaphoreCount = validWindows;
+        presentInfo.pWaitSemaphores = renderSemaphores.data();
+        presentInfo.swapchainCount = validWindows;
+        presentInfo.pSwapchains = swapchains.data();
+        presentInfo.pImageIndices = imageIndices.data();
 
         result = vkQueuePresentKHR(_presentQueue, &presentInfo);
-        AF_VK_ASSERT(result == VK_SUCCESS, "Failed to present swapchain image.");
-
-        for (auto& resources : _windowResources) {
-            resources.second.imageAcquired = false;
+        for (auto& ID : outOfDateWindowIDs) {
+            recreateSwapchain(ID);
         }
-
         _currentFrame = (_currentFrame + 1) % FRAMES_IN_FLIGHT;
     }
 
