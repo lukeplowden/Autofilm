@@ -14,6 +14,7 @@ namespace Autofilm
 
 		unsigned int GetWidth() const { return _width; }
 		unsigned int GetHeight() const { return _height; }
+		unsigned int getID() const { return _ID; }
 
 		std::string toString() const override
 		{

@@ -7,6 +7,7 @@
 #include "Core/Log.h"
 #include "Core/File.h"
 #include "Core/Window.h"
+#include "Events/AllEvents.h"
 namespace Autofilm
 {
     void VulkanAPI::init()
@@ -21,6 +22,17 @@ namespace Autofilm
         createRenderFence();
         prepareThreads();
 
+        // initialize the memory allocator
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = _physicalDevice;
+        allocatorInfo.device = _device;
+        allocatorInfo.instance = _instance;
+        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+        vmaCreateAllocator(&allocatorInfo, &_allocator);
+        _mainDeletionQueue.push_function([&]() {
+            vmaDestroyAllocator(_allocator);
+        });
+
         auto& windows = WindowManager::getWindows();
         for (int i = 0; i < WindowManager::getWindows().size(); i++)
         {
@@ -33,19 +45,21 @@ namespace Autofilm
             createImageViews(ID);
             createFramebuffers(ID);
         }
-        
-        // initialize the memory allocator
-        VmaAllocatorCreateInfo allocatorInfo = {};
-        allocatorInfo.physicalDevice = _physicalDevice;
-        allocatorInfo.device = _device;
-        allocatorInfo.instance = _instance;
-        allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-        vmaCreateAllocator(&allocatorInfo, &_allocator);
     }
 
     void VulkanAPI::onEvent(Event& event)
     {
+        // AF_CORE_INFO("{0}", event.toString());
+        EventDispatcher dispatcher(event);
+        dispatcher.Dispatch<WindowResizeEvent>(AF_BIND_EVENT_FN(onFramebufferResize));
+    }
+
+    bool VulkanAPI::onFramebufferResize(WindowResizeEvent& event)
+    {
         AF_CORE_INFO("{0}", event.toString());
+        VulkanWindowResources& resources = _windowResources[event.getID()];
+        resources.framebufferResized = true;
+        return true;
     }
 
     void VulkanAPI::shutdown()
@@ -72,6 +86,7 @@ namespace Autofilm
         if (_numThreads > _maxNumThreads) {
             AF_CORE_WARN("More windows are open than threads available. Performance may be impacted.");
         }
+        submitPresentInfo.resize(_numThreads);
 
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -158,45 +173,37 @@ namespace Autofilm
     void VulkanAPI::drawFrame()
     {
         vkWaitForFences(_device, 1, &_renderFences[_currentFrame], VK_TRUE, UINT64_MAX);
-        vkResetFences(_device, 1, &_renderFences[_currentFrame]);
-
-        std::vector<uint32_t> imageIndices;
-        imageIndices.resize(_numThreads);
-
-        std::vector<VkSwapchainKHR> swapchains;
-        swapchains.resize(_numThreads);
-
-        std::vector<VkSemaphore> frameSemaphores;
-        frameSemaphores.resize(_numThreads);
-
-        std::vector<VkSemaphore> renderSemaphores;
-        renderSemaphores.resize(_numThreads);
-
-        std::vector<VkCommandBuffer> commandBuffers;
-        commandBuffers.resize(_numThreads);
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = 0;
         beginInfo.pInheritanceInfo = nullptr;
 
-        // VkResult result = vkBeginCommandBuffer(_mainCommandBuffer, &beginInfo);
-
         for (uint32_t t = 0; t < _numThreads; t++) {
             ThreadData* thread = &_threadData[t];
             VulkanWindowResources& resources = _windowResources[thread->windowID];
             uint32_t imageIndex;
             
-            vkAcquireNextImageKHR(_device, resources.swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+            if (!resources.imageAcquired) {
+                VkResult result = vkAcquireNextImageKHR(_device, resources.swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+                if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resources.framebufferResized == true) {
+                    resources.framebufferResized = false;
+                    recreateSwapchain(thread->windowID);
+                    return;
+                } 
+                else {
+                    resources.imageAcquired = true;
+                    _threadPool._threads[t]->addJob([=] { threadRenderCode(thread, _currentFrame, imageIndex); });
             
-            _threadPool._threads[t]->addJob([=] { threadRenderCode(thread, _currentFrame, imageIndex); });
-            
-            imageIndices[t] = imageIndex;
-            swapchains[t] = resources.swapchain;
-            frameSemaphores[t] = thread->frameSemaphores[_currentFrame];
-            renderSemaphores[t] = thread->renderSemaphores[_currentFrame];
-            commandBuffers[t] = thread->commandBuffers[_currentFrame];
+                    submitPresentInfo.imageIndices[t] = imageIndex;
+                    submitPresentInfo.swapchains[t] = resources.swapchain;
+                    submitPresentInfo.frameSemaphores[t] = thread->frameSemaphores[_currentFrame];
+                    submitPresentInfo.renderSemaphores[t] = thread->renderSemaphores[_currentFrame];
+                    submitPresentInfo.commandBuffers[t] = thread->commandBuffers[_currentFrame];
+                }
+            }
         }
+        vkResetFences(_device, 1, &_renderFences[_currentFrame]);
 
         _threadPool.wait();
         printFPS();
@@ -207,13 +214,13 @@ namespace Autofilm
                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        submitInfo.waitSemaphoreCount = static_cast<uint32_t>(frameSemaphores.size());
-        submitInfo.pWaitSemaphores = frameSemaphores.data();
+        submitInfo.waitSemaphoreCount = static_cast<uint32_t>(submitPresentInfo.frameSemaphores.size());
+        submitInfo.pWaitSemaphores = submitPresentInfo.frameSemaphores.data();
         submitInfo.pWaitDstStageMask = waitStages;
-        submitInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
-        submitInfo.pCommandBuffers = commandBuffers.data();
-        submitInfo.signalSemaphoreCount = static_cast<uint32_t>(renderSemaphores.size());
-        submitInfo.pSignalSemaphores = renderSemaphores.data();
+        submitInfo.commandBufferCount = static_cast<uint32_t>(submitPresentInfo.commandBuffers.size());
+        submitInfo.pCommandBuffers = submitPresentInfo.commandBuffers.data();
+        submitInfo.signalSemaphoreCount = static_cast<uint32_t>(submitPresentInfo.renderSemaphores.size());
+        submitInfo.pSignalSemaphores = submitPresentInfo.renderSemaphores.data();
 
         VkResult result = vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _renderFences[_currentFrame]);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to submit draw command buffer.");
@@ -221,14 +228,18 @@ namespace Autofilm
         // This can be made on the fly
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(renderSemaphores.size());;
-        presentInfo.pWaitSemaphores = renderSemaphores.data();
-        presentInfo.swapchainCount = static_cast<uint32_t>(swapchains.size());;
-        presentInfo.pSwapchains = swapchains.data();
-        presentInfo.pImageIndices = imageIndices.data();
+        presentInfo.waitSemaphoreCount = static_cast<uint32_t>(submitPresentInfo.renderSemaphores.size());;
+        presentInfo.pWaitSemaphores = submitPresentInfo.renderSemaphores.data();
+        presentInfo.swapchainCount = static_cast<uint32_t>(submitPresentInfo.swapchains.size());;
+        presentInfo.pSwapchains = submitPresentInfo.swapchains.data();
+        presentInfo.pImageIndices = submitPresentInfo.imageIndices.data();
 
         result = vkQueuePresentKHR(_presentQueue, &presentInfo);
         AF_VK_ASSERT(result == VK_SUCCESS, "Failed to present swapchain image.");
+
+        for (auto& resources : _windowResources) {
+            resources.second.imageAcquired = false;
+        }
 
         _currentFrame = (_currentFrame + 1) % FRAMES_IN_FLIGHT;
     }
@@ -337,17 +348,22 @@ namespace Autofilm
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        VkPhysicalDeviceFeatures deviceFeatures{};
-        deviceFeatures.multiViewport = VK_TRUE;
+        // VkPhysicalDeviceFeatures deviceFeatures{};
+        // deviceFeatures.multiViewport = VK_TRUE;
+
+        VkPhysicalDeviceVulkan12Features features12{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+        features12.bufferDeviceAddress = true;
+        features12.descriptorIndexing = true;
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
-        createInfo.pEnabledFeatures = &deviceFeatures;
+        createInfo.pEnabledFeatures = nullptr;
 
         createInfo.enabledExtensionCount = static_cast<uint32_t>(_deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = _deviceExtensions.data();
+        createInfo.pNext = &features12;
 
         // For backwards compatability:
         if (_enableValidationLayers) {
@@ -427,6 +443,38 @@ namespace Autofilm
         vkGetSwapchainImagesKHR(_device, resources.swapchain, &imageCount, resources.swapchainImages.data());
         resources.swapchainImageFormat = surfaceFormat.format;
         resources.swapchainExtent = extent;
+
+        VkExtent3D drawImageExtent = {
+            extent.width,
+            extent.height,
+            1
+        };
+
+        resources.drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+        resources.drawImage.imageExtent = drawImageExtent;
+
+        VkImageUsageFlags drawImageUsages{};
+        drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
+        drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        VkImageCreateInfo imgCreateInfo = VulkanUtils::imageCreateInfo(resources.drawImage.imageFormat, drawImageUsages, drawImageExtent);
+
+        VmaAllocationCreateInfo imgAllocInfo = {};
+        imgAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        imgAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        vmaCreateImage(_allocator, &imgCreateInfo, &imgAllocInfo, &resources.drawImage.image, &resources.drawImage.allocation, nullptr);
+
+        VkImageViewCreateInfo viewCreateInfo = VulkanUtils::imageViewCreateInfo(resources.drawImage.imageFormat, resources.drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+
+        result = vkCreateImageView(_device, &viewCreateInfo, nullptr, &resources.drawImage.imageView);
+
+        _mainDeletionQueue.push_function([=]() {
+            vkDestroyImageView(_device, resources.drawImage.imageView, nullptr);
+            vmaDestroyImage(_allocator, resources.drawImage.image, resources.drawImage.allocation);
+        });
     }
 
     void VulkanAPI::createImageViews(int windowID)
@@ -477,6 +525,33 @@ namespace Autofilm
             VkResult result = vkCreateFramebuffer(_device, &framebufferInfo, nullptr, &resources.swapchainFramebuffers[i]);
             AF_VK_ASSERT(result == VK_SUCCESS, "Failed to create a framebuffer.");       
         }
+    }
+
+    void VulkanAPI::cleanupSwapchain(int windowID)
+    {
+        VulkanWindowResources resources = _windowResources[windowID];
+
+        for (size_t i = 0; i < resources.swapchainFramebuffers.size(); i++) {
+            vkDestroyFramebuffer(_device, resources.swapchainFramebuffers[i], nullptr);
+        }
+        resources.swapchainFramebuffers.clear();
+        for (size_t i = 0; i < resources.swapchainImageViews.size(); i++) {
+            vkDestroyImageView(_device, resources.swapchainImageViews[i], nullptr);
+        }
+        resources.swapchainImageViews.clear();
+        vkDestroySwapchainKHR(_device, resources.swapchain, nullptr);
+        resources.swapchain = VK_NULL_HANDLE;
+    }
+
+    void VulkanAPI::recreateSwapchain(int windowID)
+    {
+        vkDeviceWaitIdle(_device);
+
+        cleanupSwapchain(windowID);
+
+        createSwapchain(windowID);
+        createImageViews(windowID);
+        createFramebuffers(windowID);
     }
 
     void VulkanAPI::createRenderPass()

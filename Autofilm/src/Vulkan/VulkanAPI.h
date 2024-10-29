@@ -6,7 +6,7 @@
 #include "Renderer/RenderAPI.h"
 #include "Vulkan/VulkanWindowManager.h"
 #include "Core/ThreadPool.h"
-#include "Events/Event.h"
+#include "Events/AllEvents.h"
 
 namespace Autofilm
 {
@@ -39,6 +39,7 @@ namespace Autofilm
 
     private:
         void onEvent(Event& event);
+        bool onFramebufferResize(WindowResizeEvent& event);
         const static int FRAMES_IN_FLIGHT { 2 };
 
         VkInstance _instance;
@@ -66,7 +67,25 @@ namespace Autofilm
             std::vector<VkImageView> swapchainImageViews;
             std::vector<VkFramebuffer> swapchainFramebuffers;
             AllocatedImage drawImage;
+            bool framebufferResized = false;
+            bool imageAcquired = false;
         };
+        struct FrameSubmitPresentInfo {
+            std::vector<uint32_t> imageIndices;
+            std::vector<VkSwapchainKHR> swapchains;
+            std::vector<VkSemaphore> frameSemaphores;
+            std::vector<VkSemaphore> renderSemaphores;
+            std::vector<VkCommandBuffer> commandBuffers;
+            void resize(int size)
+            {
+                imageIndices.resize(size);
+                swapchains.resize(size);
+                frameSemaphores.resize(size);
+                renderSemaphores.resize(size);
+                commandBuffers.resize(size); 
+            }
+        };
+        FrameSubmitPresentInfo submitPresentInfo; 
         std::unordered_map<int, VulkanWindowResources> _windowResources;
 
         VmaAllocator _allocator;
@@ -89,19 +108,14 @@ namespace Autofilm
         void createSwapchain(int windowID);
         void createImageViews(int windowID);
         void createFramebuffers(int windowID);
+        void recreateSwapchain(int windowID);
+        void cleanupSwapchain(int windowID);
 
         void createRenderPass();
         void createGraphicsPipeline();
         void createRenderFence();
         void drawFrame() override;
 
-        struct AllocatedImage {
-            VkImage image;
-            VkImageView imageView;
-            VmaAllocation allocation;
-            VkExtent3D imageExtent;
-            VkFormat imageFormat;
-        };
         struct QueueFamilyIndices {
             std::optional<uint32_t> graphicsFamily;
             std::optional<uint32_t> computeFamily;
@@ -117,7 +131,8 @@ namespace Autofilm
 
         bool checkDeviceExtensionsSupport(VkPhysicalDevice device);
         const std::vector<const char*> _deviceExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
         };
 
         // Swapchains

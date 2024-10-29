@@ -22,7 +22,7 @@ namespace Autofilm
         AF_CORE_INFO("Creating window {0} ({1}, {2})", props.title, props.width, props.height);
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         _window = glfwCreateWindow(_data.width, _data.height, _data.title.c_str(), nullptr, nullptr);
         AF_CORE_ASSERT(_window, "Failed to create a GLFW window.");
         glfwSetWindowUserPointer(_window, &_data);
@@ -34,7 +34,7 @@ namespace Autofilm
             data.eventCallback(event);
         });
 
-        glfwSetWindowSizeCallback(_window, [](GLFWwindow* window, int width, int height)
+        glfwSetFramebufferSizeCallback(_window, [](GLFWwindow* window, int width, int height)
         {
             WindowData data = *(WindowData*)glfwGetWindowUserPointer(window);
             data.width = width;
