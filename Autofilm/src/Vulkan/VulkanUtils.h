@@ -6,8 +6,10 @@
 
 namespace Autofilm
 {
+    class VulkanAPI;
     class AUTOFILM_API VulkanUtils
     {
+    public:
         static VkImageCreateInfo imageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
         {
             VkImageCreateInfo info = {};
