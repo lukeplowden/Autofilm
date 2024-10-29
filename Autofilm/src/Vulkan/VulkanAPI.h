@@ -40,6 +40,7 @@ namespace Autofilm
     private:
         void onEvent(Event& event);
         bool onFramebufferResize(WindowResizeEvent& event);
+        bool onWindowClose(WindowCloseEvent& event);
         const static int FRAMES_IN_FLIGHT { 2 };
 
         VkInstance _instance;

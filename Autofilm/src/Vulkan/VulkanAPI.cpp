@@ -49,14 +49,72 @@ namespace Autofilm
 
     void VulkanAPI::onEvent(Event& event)
     {
-        // AF_CORE_INFO("{0}", event.toString());
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<WindowResizeEvent>(AF_BIND_EVENT_FN(onFramebufferResize));
+        dispatcher.Dispatch<WindowCloseEvent>(AF_BIND_EVENT_FN(onWindowClose));
+    }
+
+    bool VulkanAPI::onWindowClose(WindowCloseEvent& event)
+    {
+        vkDeviceWaitIdle(_device);
+        uint32_t ID = event.getID();
+
+        auto windowResourceIt = _windowResources.find(ID);
+        if (windowResourceIt != _windowResources.end()) {
+            VulkanWindowResources& resources = windowResourceIt->second;
+            for (VkFramebuffer framebuffer : resources.swapchainFramebuffers) {
+                vkDestroyFramebuffer(_device, framebuffer, nullptr);
+            }
+            for (VkImageView imageView : resources.swapchainImageViews) {
+                vkDestroyImageView(_device, imageView, nullptr);
+            }
+
+            if (resources.swapchain != VK_NULL_HANDLE) {
+                vkDestroySwapchainKHR(_device, resources.swapchain, nullptr);
+            }
+            if (resources.surface != VK_NULL_HANDLE) {
+                vkDestroySurfaceKHR(_instance, resources.surface, nullptr);
+            }
+            if (resources.drawImage.image != VK_NULL_HANDLE) {
+                vkDestroyImage(_device, resources.drawImage.image, nullptr);
+                // vkFreeMemory(_device, resources.drawImage.memory, nullptr);
+                vkDestroyImageView(_device, resources.drawImage.imageView, nullptr);
+            }
+            _windowResources.erase(windowResourceIt);
+        }
+
+        auto threadIt = std::find_if(_threadData.begin(), _threadData.end(),
+                                    [ID](const ThreadData& thread) { return thread.windowID == ID; });
+
+        if (threadIt != _threadData.end()) {
+            ThreadData& threadData = *threadIt;
+
+            for (int j = 0; j < FRAMES_IN_FLIGHT; j++) {
+                if (threadData.commandBuffers[j] != VK_NULL_HANDLE) {
+                    vkFreeCommandBuffers(_device, threadData.commandPools[j], 1, &threadData.commandBuffers[j]);
+                }
+                if (threadData.commandPools[j] != VK_NULL_HANDLE) {
+                    vkDestroyCommandPool(_device, threadData.commandPools[j], nullptr);
+                }
+                if (threadData.renderSemaphores[j] != VK_NULL_HANDLE) {
+                    vkDestroySemaphore(_device, threadData.renderSemaphores[j], nullptr);
+                }
+                if (threadData.frameSemaphores[j] != VK_NULL_HANDLE) {
+                    vkDestroySemaphore(_device, threadData.frameSemaphores[j], nullptr);
+                }
+                threadData.deletionQueue[j].flush();
+            }
+
+            _threadData.erase(threadIt);
+            _numThreads = _threadData.size();
+        }
+        WindowManager::destroyWindow(event.getID());
+        prepareThreads();
+        return true;
     }
 
     bool VulkanAPI::onFramebufferResize(WindowResizeEvent& event)
     {
-        AF_CORE_INFO("{0}", event.toString());
         VulkanWindowResources& resources = _windowResources[event.getID()];
         resources.framebufferResized = true;
         return true;
@@ -80,6 +138,7 @@ namespace Autofilm
 
         auto& windows = WindowManager::getWindows();
         int numWindows = windows.size();
+        _threadData.clear();
         _threadPool.setThreadCount(numWindows);
         _threadData.resize(numWindows);
         _numThreads = numWindows;
@@ -197,7 +256,7 @@ namespace Autofilm
             VulkanWindowResources& resources = _windowResources[thread->windowID];
             uint32_t imageIndex;
             
-            VkResult result = vkAcquireNextImageKHR(_device, resources.swapchain, UINT64_MAX, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+            VkResult result = vkAcquireNextImageKHR(_device, resources.swapchain, 1000000000, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resources.framebufferResized == true) {
                 resources.framebufferResized = false;
                 outOfDateWindowIDs.push_back(thread->windowID);

@@ -36,6 +36,8 @@ namespace Autofilm
 		WindowCloseEvent(const unsigned int ID)
             : _ID(ID) {}
 
+		unsigned int getID() const { return _ID; }
+		
         std::string toString() const override
 		{
 			std::stringstream ss;
