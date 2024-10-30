@@ -200,8 +200,8 @@ namespace Autofilm
         renderPassBeginInfo.framebuffer = resources.swapchainFramebuffers[imageIndex];
         renderPassBeginInfo.renderArea.offset = { 0, 0 };
         renderPassBeginInfo.renderArea.extent = resources.swapchainExtent;
-
-        VkClearValue clearColor = { { { ((float)std::sin(glfwGetTime()) * 0.5f) + 0.5f, 0.4f, 0.3f, 1.0f } } };
+        float col = ((float)std::sin(glfwGetTime()) * 0.5f) + 0.5f;
+        VkClearValue clearColor = { { { col, 0.0f, 1.0f-col, 1.0f } } };
         renderPassBeginInfo.clearValueCount = 1;
         renderPassBeginInfo.pClearValues = &clearColor;
         
@@ -255,7 +255,19 @@ namespace Autofilm
             ThreadData* thread = &_threadData[t];
             VulkanWindowResources& resources = _windowResources[thread->windowID];
             uint32_t imageIndex;
-            
+
+            // Center coordinates of the circular path
+            int screenCenterX = 1920*3/4; // Example screen center x coordinate
+            int screenCenterY = 1080*3/4; // Example screen center y coordinate
+            int radius = 700;        // Radius of the circular path
+
+            float angle = glfwGetTime()/3.0f + (2.0f * 3.14f * t / _numThreads);
+            int xPos = screenCenterX + static_cast<int>(radius * std::cos(angle));
+            int yPos = screenCenterY + static_cast<int>(radius * std::sin(angle));
+
+            VulkanWindow* vulkanWindow = dynamic_cast<VulkanWindow*>(WindowManager::getWindows()[t].get());
+            glfwSetWindowPos(vulkanWindow->_window, xPos, yPos);
+
             VkResult result = vkAcquireNextImageKHR(_device, resources.swapchain, 1000000000, thread->frameSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
             if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || resources.framebufferResized == true) {
                 resources.framebufferResized = false;
@@ -665,8 +677,8 @@ namespace Autofilm
 
     void VulkanAPI::createGraphicsPipeline()
     {
-        auto vertShaderCode = File::readFile("C:/dev/auto-vid/Autofilm/src/Shaders/shaders/bin/vert.spv");
-        auto fragShaderCode = File::readFile("C:/dev/auto-vid/Autofilm/src/Shaders/shaders/bin/frag.spv");
+        auto vertShaderCode = File::readFile("C:/Users/iplow/Documents/code/Autofilm/Autofilm/src/Shaders/shaders/bin/vert.spv");
+        auto fragShaderCode = File::readFile("C:/Users/iplow/Documents/code/Autofilm/Autofilm/src/Shaders/shaders/bin/frag.spv");
 
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);

@@ -14,8 +14,8 @@ namespace Autofilm
 
         WindowProperties(
                         const std::string& title = "Autofilm", 
-                        unsigned int width = 1280,
-                        unsigned int height = 720
+                        unsigned int width = 300,
+                        unsigned int height = 300
                     )
             : title(title), width(width), height(height)
         {}

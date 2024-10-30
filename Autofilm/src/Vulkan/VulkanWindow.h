@@ -44,10 +44,10 @@ namespace Autofilm
         void setVSync(bool enabled) override;
         bool isVSync() const override;
 
+        GLFWwindow* _window;
     private: 
         virtual void init(const WindowProperties& props, unsigned int ID);
         virtual void shutdown();
-        GLFWwindow* _window;
         WindowData _data;
         friend class VulkanAPI;
         friend class VulkanWindowManager;
