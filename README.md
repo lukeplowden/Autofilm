@@ -15,3 +15,9 @@ I got multithreaded, multichannel triangles
 ```
 git submodule update --init --recursive
 ```
+### Declaration
+Lot's of code written based on 
+- Vulkan Guide
+- Vulkan Tutorial
+- The Cherno Game Engine youtube series
+- Sascha Willem's Vulkan Examples 
