@@ -3,13 +3,22 @@
 #include <gst/gst.h>
 #include "Core/File.h"
 
+namespace Autofilm
+{
+    class GstVideoPlayer
+    {
+        GstVideoPlayer() { gst_init(NULL, NULL); }
+        ~GstVideoPlayer();
+    };
+}
+
 int AUTOFILM_API hello_gst()
 {
     GstElement* pipeline;
     GstBus* bus;
     GstMessage *msg;
     gst_init(NULL, NULL);
-    
+
     pipeline = gst_parse_launch(
         "playbin uri=file:///C:/dev/auto-vid/Autofilm/src/Video/example.mp4",
         NULL

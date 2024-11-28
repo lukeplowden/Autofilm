@@ -4,9 +4,9 @@
 
 #include <functional>
 
+// THIS IS FROM 'THE CHERNO GAME ENGINE SERIES ON YOUTUBE' !
 namespace Autofilm 
 {
-
 	enum class EventType
 	{
 		None = 0,

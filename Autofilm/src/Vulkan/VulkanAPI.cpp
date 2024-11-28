@@ -257,9 +257,9 @@ namespace Autofilm
             uint32_t imageIndex;
 
             // Center coordinates of the circular path
-            int screenCenterX = 1920*3/4; // Example screen center x coordinate
-            int screenCenterY = 1080*3/4; // Example screen center y coordinate
-            int radius = 700;        // Radius of the circular path
+            int screenCenterX = 1920/2; // Example screen center x coordinate
+            int screenCenterY = 1080*0.25; // Example screen center y coordinate
+            int radius = 300;        // Radius of the circular path
 
             float angle = glfwGetTime()/3.0f + (2.0f * 3.14f * t / _numThreads);
             int xPos = screenCenterX + static_cast<int>(radius * std::cos(angle));
@@ -295,7 +295,7 @@ namespace Autofilm
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+                                            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = frameSemaphores.size();
         submitInfo.pWaitSemaphores = frameSemaphores.data();
         submitInfo.pWaitDstStageMask = waitStages;
@@ -677,8 +677,8 @@ namespace Autofilm
 
     void VulkanAPI::createGraphicsPipeline()
     {
-        auto vertShaderCode = File::readFile("C:/Users/iplow/Documents/code/Autofilm/Autofilm/src/Shaders/shaders/bin/vert.spv");
-        auto fragShaderCode = File::readFile("C:/Users/iplow/Documents/code/Autofilm/Autofilm/src/Shaders/shaders/bin/frag.spv");
+        auto vertShaderCode = File::readFile("C:/dev/auto-vid/Autofilm/src/Shaders/shaders/bin/vert.spv");
+        auto fragShaderCode = File::readFile("C:/dev/auto-vid/Autofilm/src/Shaders/shaders/bin/frag.spv");
 
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
