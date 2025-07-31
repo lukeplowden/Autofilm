@@ -3,9 +3,7 @@
 My attempt at a multithreaded vulkan renderer for multichannel video & immersive video installation...
 I got multithreaded, multichannel triangles
 
-![unnamed](https://git.arts.ac.uk/23036879/VulkanVideoEditor/assets/851/ba80327b-aa6d-41ab-9307-1eb859121509)
-
-[This repository is related](https://git.arts.ac.uk/23036879/Film-labeller)
+<img width="1507" height="820" alt="ba80327b-aa6d-41ab-9307-1eb859121509" src="https://github.com/user-attachments/assets/59eedcb6-033d-4aca-a99a-e4d3323ab502" />
 
 ### Requirements
 - Currently only builds on Windows.
